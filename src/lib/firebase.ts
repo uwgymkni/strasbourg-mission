@@ -1,15 +1,13 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
 
-// These two are the minimum Firestore requires.
-// The remaining four are passed through — Firebase handles missing optionals gracefully.
-const REQUIRED_ENV_VARS = [
-  "NEXT_PUBLIC_FIREBASE_API_KEY",
-  "NEXT_PUBLIC_FIREBASE_PROJECT_ID",
-] as const;
-
 function assertEnv(): void {
-  const missing = REQUIRED_ENV_VARS.filter((key) => !process.env[key]);
+  // Must use dot notation — Next.js only statically inlines process.env.NEXT_PUBLIC_*
+  // references at build time. Bracket notation (process.env[key]) is NOT replaced and
+  // returns undefined in the browser bundle even when the vars are set.
+  const missing: string[] = [];
+  if (!process.env.NEXT_PUBLIC_FIREBASE_API_KEY) missing.push("NEXT_PUBLIC_FIREBASE_API_KEY");
+  if (!process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID) missing.push("NEXT_PUBLIC_FIREBASE_PROJECT_ID");
   if (missing.length === 0) return;
 
   throw new Error(
