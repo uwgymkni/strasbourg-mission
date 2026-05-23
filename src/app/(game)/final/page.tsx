@@ -12,9 +12,13 @@ import { Button } from "@/components/ui/Button";
 export default function FinalPage() {
   const router = useRouter();
   const user = useRequireAuth();
+  const MIN_LETTERS_FOR_FINAL = 5; // max 1 skip allowed
+
   const {
     stations,
+    progress,
     completedCount,
+    allResolved,
     loading,
     error,
     loadGame,
@@ -29,6 +33,12 @@ export default function FinalPage() {
   const sortedLetters = [...stations].sort((a, b) => a.rewardNumber - b.rewardNumber);
   const correctAnswer = sortedLetters.map((s) => s.rewardLetter).join("").toLowerCase();
 
+  // How many stations were actually solved (not skipped)
+  const collectedLetterCount = sortedLetters.filter(
+    (s) => progress[s.id] === "completed"
+  ).length;
+  const canSubmitFinal = collectedLetterCount >= MIN_LETTERS_FOR_FINAL;
+
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!user?.teamCode) return;
@@ -39,13 +49,13 @@ export default function FinalPage() {
     }
   }, [user?.teamCode]);
 
-  // Redirect back if not all stations are complete (fires after stations load)
+  // Redirect back if not all stations are resolved (completed or skipped)
   useEffect(() => {
     if (!stations.length) return;
-    if (completedCount < stations.length) {
+    if (!allResolved) {
       router.replace("/dashboard");
     }
-  }, [stations.length, completedCount, router]);
+  }, [stations.length, allResolved, router]);
 
   // ── Guards ────────────────────────────────────────────────────────────────
 
@@ -102,18 +112,27 @@ export default function FinalPage() {
           ) : (
             <>
               <div className="flex gap-3 justify-center flex-wrap">
-                {sortedLetters.map((s) => (
-                  <div key={s.id} className="flex flex-col items-center gap-1">
-                    <div className="w-11 h-11 rounded-lg border border-gold-500/40 bg-gold-500/5 flex items-center justify-center">
-                      <span className="font-display text-2xl font-semibold text-gold-400">
-                        {s.rewardLetter}
+                {sortedLetters.map((s) => {
+                  const isSkipped = progress[s.id] === "skipped";
+                  return (
+                    <div key={s.id} className="flex flex-col items-center gap-1">
+                      <div className={`w-11 h-11 rounded-lg flex items-center justify-center border ${
+                        isSkipped
+                          ? "border-amber-700/40 bg-amber-950/30"
+                          : "border-gold-500/40 bg-gold-500/5"
+                      }`}>
+                        <span className={`font-display text-2xl font-semibold ${
+                          isSkipped ? "text-amber-700" : "text-gold-400"
+                        }`}>
+                          {isSkipped ? "?" : s.rewardLetter}
+                        </span>
+                      </div>
+                      <span className="text-xs text-stone-600 tabular-nums">
+                        {s.rewardNumber}
                       </span>
                     </div>
-                    <span className="text-xs text-stone-600 tabular-nums">
-                      {s.rewardNumber}
-                    </span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
               <p className="text-stone-500 text-xs mt-4 text-center leading-relaxed">
                 Setzt diese Buchstaben in der richtigen Reihenfolge zusammen.
@@ -137,6 +156,16 @@ export default function FinalPage() {
           </div>
         )}
 
+        {/* Minimum letters guard */}
+        {!canSubmitFinal && sortedLetters.length > 0 && (
+          <div className="rounded-lg bg-amber-950/40 border border-amber-700/40 px-4 py-3">
+            <p className="text-sm text-amber-400 leading-relaxed">
+              Ihr habt zu wenige Buchstaben gesammelt ({collectedLetterCount} von {MIN_LETTERS_FOR_FINAL} benötigt).
+              Das Lösungswort kann nicht eingegeben werden.
+            </p>
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
             label="Lösungswort"
@@ -151,14 +180,14 @@ export default function FinalPage() {
             autoCapitalize="characters"
             spellCheck={false}
             error={answerError ?? undefined}
-            disabled={loading}
+            disabled={loading || !canSubmitFinal}
           />
 
           <Button
             type="submit"
             variant="primary"
             loading={loading}
-            disabled={!answer.trim() || loading}
+            disabled={!answer.trim() || loading || !canSubmitFinal}
             className="w-full"
           >
             Wahrheit enthüllen

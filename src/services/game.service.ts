@@ -16,7 +16,7 @@ import type { Station, StationStatus, TeamProgress, ChallengeType } from "@/type
 // Normalization helpers
 // ---------------------------------------------------------------------------
 
-const VALID_STATUSES = new Set<string>(["locked", "active", "completed"]);
+const VALID_STATUSES = new Set<string>(["locked", "active", "completed", "skipped"]);
 const VALID_CHALLENGE_TYPES = new Set<string>(["text", "qr", "multiple-choice"]);
 
 function isValidStatus(v: unknown): v is StationStatus {
@@ -78,6 +78,16 @@ function normalizeTeamProgress(
     startedAt: typeof data.startedAt === "number" ? data.startedAt : 0,
     ...(data.finishedAt !== undefined && { finishedAt: toMs(data.finishedAt) }),
     finalAnswer: typeof data.finalAnswer === "string" ? data.finalAnswer : null,
+    wrongAnswers:
+      data.wrongAnswers &&
+      typeof data.wrongAnswers === "object" &&
+      !Array.isArray(data.wrongAnswers)
+        ? Object.fromEntries(
+            Object.entries(data.wrongAnswers as Record<string, unknown>)
+              .filter(([, v]) => typeof v === "number")
+              .map(([k, v]) => [k, v as number])
+          )
+        : {},
   };
 }
 
@@ -144,6 +154,27 @@ export async function persistStationCompletion(
   try {
     await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
       [`progress.${stationId}`]: "completed" satisfies StationStatus,
+    });
+    return ok(undefined);
+  } catch (error) {
+    return err(error);
+  }
+}
+
+/**
+ * Marks a single station as skipped in Firestore and records the wrong-answer count.
+ * Uses dot notation to avoid overwriting unrelated fields.
+ * Idempotent — safe to retry after a network error.
+ */
+export async function persistStationSkip(
+  teamId: string,
+  stationId: string,
+  wrongCount: number
+): Promise<ServiceResult<void>> {
+  try {
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+      [`progress.${stationId}`]: "skipped" satisfies StationStatus,
+      [`wrongAnswers.${stationId}`]: wrongCount,
     });
     return ok(undefined);
   } catch (error) {
@@ -228,6 +259,7 @@ export async function resetTeamProgress(
         startedAt: Date.now(),
         finishedAt: null,
         finalAnswer: null,
+        wrongAnswers: {},
         resetAt: Date.now(),
       },
       { merge: false } // Full overwrite — this is intentional for a hard reset

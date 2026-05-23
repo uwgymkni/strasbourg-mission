@@ -7,11 +7,14 @@ import {
   selectProgress,
   selectCurrentStationId,
   selectCompletedCount,
+  selectAllResolved,
+  selectWrongAnswers,
 } from "@/stores/game.store";
 import {
   fetchStations,
   fetchTeamProgress,
   persistStationCompletion,
+  persistStationSkip,
   persistProgress,
   submitFinalSolution,
   resetTeamProgress,
@@ -34,10 +37,14 @@ export function useGame() {
   const progress = useGameStore(selectProgress);
   const currentStationId = useGameStore(selectCurrentStationId);
   const completedCount = useGameStore(selectCompletedCount);
+  const allResolved = useGameStore(selectAllResolved);
+  const wrongAnswers = useGameStore(selectWrongAnswers);
 
   const setStations = useGameStore((s) => s.setStations);
   const completeStationInStore = useGameStore((s) => s.completeStation);
   const unlockNextInStore = useGameStore((s) => s.unlockNextStation);
+  const skipStationInStore = useGameStore((s) => s.skipStation);
+  const incrementWrongAnswerInStore = useGameStore((s) => s.incrementWrongAnswer);
   const resetGameInStore = useGameStore((s) => s.resetGame);
 
   /**
@@ -165,6 +172,57 @@ export function useGame() {
   }
 
   /**
+   * Skips the current station — marks it as skipped in Firebase and unlocks the next.
+   *
+   * Same explicit sequence as completeCurrentStation:
+   *   1. persistStationSkip()  → write to Firebase (progress.stationId = "skipped", wrongAnswers)
+   *   2. skipStation()         → mark skipped in store
+   *   3. unlockNextStation()   → activate next station in store
+   *
+   * Steps 2 and 3 only run if step 1 succeeds. Retries are safe (idempotent write).
+   */
+  async function skipCurrentStation(): Promise<ServiceResult<void>> {
+    const currentId = useGameStore.getState().currentStationId;
+
+    if (!currentId) {
+      return { success: false, error: "Keine aktive Station zum Überspringen." };
+    }
+    if (!teamIdRef.current) {
+      return { success: false, error: "Spielsitzung nicht geladen. Bitte neu laden." };
+    }
+    if (submittingRef.current) {
+      return { success: false, error: "Aktion bereits in Bearbeitung." };
+    }
+
+    submittingRef.current = true;
+    setLoading(true);
+    setError(null);
+
+    const wrongCount = useGameStore.getState().wrongAnswers[currentId] ?? 0;
+    const result = await persistStationSkip(teamIdRef.current, currentId, wrongCount);
+
+    if (!result.success) {
+      setError(result.error);
+      setLoading(false);
+      submittingRef.current = false;
+      return result;
+    }
+
+    // Firebase confirmed — now update the store.
+    skipStationInStore(currentId);
+    unlockNextInStore();
+
+    setLoading(false);
+    submittingRef.current = false;
+    return ok(undefined);
+  }
+
+  /** Increments the local wrong-answer counter for a station. Persisted to localStorage. */
+  function incrementWrongAnswer(stationId: string): void {
+    incrementWrongAnswerInStore(stationId);
+  }
+
+  /**
    * Resets a team's progress. Admin-facing.
    * The calling component is responsible for verifying admin role before invoking this.
    */
@@ -202,11 +260,15 @@ export function useGame() {
     progress,
     currentStationId,
     completedCount,
+    allResolved,
+    wrongAnswers,
     loading,
     error,
     loadGame,
     initTeamId,
     completeCurrentStation,
+    skipCurrentStation,
+    incrementWrongAnswer,
     submitFinal,
     resetGame,
     clearError,

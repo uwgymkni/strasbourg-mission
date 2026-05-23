@@ -11,11 +11,14 @@ import { Button } from "@/components/ui/Button";
 export default function SuccessPage() {
   const router = useRouter();
   const user = useRequireAuth();
-  const { stations, completedCount, loadGame } = useGame();
+  const { stations, progress, completedCount, wrongAnswers, loadGame } = useGame();
 
   const total = stations.length > 0 ? stations.length : 6;
   const sortedLetters = [...stations].sort((a, b) => a.rewardNumber - b.rewardNumber);
   const finalWord = sortedLetters.map((s) => s.rewardLetter).join("");
+
+  const skippedCount = Object.values(progress).filter((v) => v === "skipped").length;
+  const totalWrongAnswers = Object.values(wrongAnswers).reduce((sum, n) => sum + n, 0);
 
   // Reload station data on hard refresh (stations are not persisted in the store)
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -77,9 +80,21 @@ export default function SuccessPage() {
             <span className="text-cream text-sm font-medium">{user.teamName}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-stone-400 text-sm">Stationen</span>
+            <span className="text-stone-400 text-sm">Gelöste Stationen</span>
             <Badge variant="completed">{completedCount} / {total}</Badge>
           </div>
+          {skippedCount > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-stone-400 text-sm">Übersprungen</span>
+              <Badge variant="skipped">{skippedCount}</Badge>
+            </div>
+          )}
+          {totalWrongAnswers > 0 && (
+            <div className="flex items-center justify-between">
+              <span className="text-stone-400 text-sm">Fehlversuche</span>
+              <span className="text-stone-400 text-sm tabular-nums">{totalWrongAnswers}</span>
+            </div>
+          )}
         </div>
       </Card>
 

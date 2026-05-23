@@ -1,4 +1,4 @@
-type BadgeVariant = "active" | "completed" | "locked" | "success" | "error";
+type BadgeVariant = "active" | "completed" | "locked" | "skipped" | "success" | "error";
 
 interface BadgeProps {
   variant: BadgeVariant;
@@ -10,6 +10,7 @@ const variantClasses: Record<BadgeVariant, string> = {
   active:    "bg-gold-500/15 text-gold-400 border border-gold-500/30",
   completed: "bg-emerald-950/60 text-emerald-400 border border-emerald-700/40",
   locked:    "bg-navy-900/80 text-stone-400 border border-navy-700/50",
+  skipped:   "bg-amber-950/60 text-amber-400 border border-amber-700/40",
   success:   "bg-emerald-950/60 text-emerald-400 border border-emerald-700/40",
   error:     "bg-red-950/60 text-red-400 border border-red-700/40",
 };

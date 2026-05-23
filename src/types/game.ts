@@ -1,4 +1,4 @@
-export type StationStatus = "locked" | "active" | "completed";
+export type StationStatus = "locked" | "active" | "completed" | "skipped";
 
 export type ChallengeType = "text" | "qr" | "multiple-choice";
 
@@ -25,4 +25,5 @@ export interface TeamProgress {
   finishedAt?: number;
   finalAnswer: string | null; // null until the team submits the final cipher
   members?: string[];          // team member names, saved on /team-members page
+  wrongAnswers?: Record<string, number>; // wrong attempt count per stationId
 }

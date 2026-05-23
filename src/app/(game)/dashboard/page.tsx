@@ -14,6 +14,7 @@ const STATUS_LABEL_DE: Record<StationStatus, string> = {
   active: "Aktiv",
   completed: "Abgeschlossen",
   locked: "Gesperrt",
+  skipped: "Übersprungen",
 };
 
 export default function DashboardPage() {
@@ -23,6 +24,7 @@ export default function DashboardPage() {
     stations,
     progress,
     completedCount,
+    allResolved,
     loading,
     error,
     loadGame,
@@ -30,7 +32,8 @@ export default function DashboardPage() {
   } = useGame();
 
   const total = stations.length > 0 ? stations.length : 6;
-  const allComplete = stations.length > 0 && completedCount === stations.length;
+  // allResolved: all stations either completed or skipped (ready for the final cipher)
+  const allComplete = allResolved;
   const sortedStations = [...stations].sort((a, b) => a.order - b.order);
   const collectedLetters = sortedStations
     .filter((s) => progress[s.id] === "completed")

@@ -11,15 +11,19 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { StationStatus } from "@/types/game";
 
+// Wrong answers before the skip button becomes available
+const SKIP_THRESHOLD = 2;
+
 function isAnswerCorrect(input: string, accepted: string[]): boolean {
   const n = input.trim().toLowerCase();
   return accepted.some((a) => a.trim().toLowerCase() === n);
 }
 
 const STATUS_LABEL: Record<StationStatus, string> = {
-  active: "Aktiv",
+  active:    "Aktiv",
   completed: "Abgeschlossen",
-  locked: "Gesperrt",
+  locked:    "Gesperrt",
+  skipped:   "Übersprungen",
 };
 
 export default function MissionPage() {
@@ -37,16 +41,28 @@ export default function MissionPage() {
     loadGame,
     initTeamId,
     completeCurrentStation,
+    skipCurrentStation,
+    incrementWrongAnswer,
     clearError,
+    wrongAnswers,
   } = useGame();
 
   const [answer, setAnswer] = useState("");
   const [answerError, setAnswerError] = useState<string | null>(null);
-  // "challenge" → form visible; "reward" → letter revealed after correct submission
-  const [phase, setPhase] = useState<"challenge" | "reward">("challenge");
+  // "challenge" → form visible; "reward" → letter revealed; "skipped" → skip outcome screen
+  const [phase, setPhase] = useState<"challenge" | "reward" | "skipped">("challenge");
+  // Two-step skip confirmation — prevents accidental skips
+  const [skipConfirming, setSkipConfirming] = useState(false);
 
   const station = stations.find((s) => s.id === stationId);
   const stationStatus = (progress[stationId] ?? "locked") as StationStatus;
+  const wrongCount = wrongAnswers[stationId] ?? 0;
+  const showSkipSection = wrongCount >= SKIP_THRESHOLD;
+
+  // The station that follows this one — shown as a hint after completion/skip
+  const nextStation = station
+    ? stations.find((s) => s.order === station.order + 1)
+    : undefined;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -71,7 +87,16 @@ export default function MissionPage() {
 
     // 1. Validate locally — no Firebase call if wrong
     if (!isAnswerCorrect(answer, station.acceptedAnswers)) {
-      setAnswerError("Falsche Antwort. Schaut noch einmal genau vor Ort nach.");
+      incrementWrongAnswer(stationId);
+      const newCount = wrongCount + 1; // compute locally — store update is async
+
+      if (newCount < SKIP_THRESHOLD) {
+        // First wrong attempt: simple error, no skip option yet
+        setAnswerError("Nicht korrekt. Schaut euch den Ort noch einmal genau an.");
+      } else {
+        // At or beyond threshold: skip section provides the messaging
+        setAnswerError(null);
+      }
       return;
     }
 
@@ -92,6 +117,14 @@ export default function MissionPage() {
     clearError();
     const result = await completeCurrentStation();
     if (result.success) setPhase("reward");
+  }
+
+  async function handleSkip() {
+    clearError();
+    setAnswerError(null);
+    const result = await skipCurrentStation();
+    if (!result.success) return; // Firebase error shown by hook
+    setPhase("skipped");
   }
 
   // ── Loading / not-found ───────────────────────────────────────────────────
@@ -123,8 +156,10 @@ export default function MissionPage() {
           subtitle="Buchstabenfragment gesammelt"
           onBack={() => router.push("/dashboard")}
         />
-        <div className="flex-1 flex flex-col items-center justify-center gap-8 pb-10">
-          <div className="text-center">
+        <div className="flex-1 flex flex-col gap-6 pb-10">
+
+          {/* Letter reveal */}
+          <div className="text-center mt-4">
             <p className="text-gold-500 text-xs font-medium tracking-widest uppercase mb-6">
               Buchstabenfragment gesammelt
             </p>
@@ -139,6 +174,66 @@ export default function MissionPage() {
               Station {station.order} von {stations.length} abgeschlossen
             </p>
           </div>
+
+          {/* Next station hint — atmospheric pointer for the next location */}
+          {nextStation && (
+            <Card padding="md">
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
+                Eure nächste Station
+              </p>
+              <p className="text-sm font-semibold text-cream mb-2">{nextStation.title}</p>
+              <p className="text-stone-400 text-sm leading-relaxed">
+                {nextStation.locationHint}
+              </p>
+            </Card>
+          )}
+
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={() => router.push("/dashboard")}
+          >
+            Zurück zur Übersicht
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  // ── Skipped outcome ───────────────────────────────────────────────────────
+
+  if (phase === "skipped") {
+    return (
+      <>
+        <PageHeader
+          title={station.title}
+          subtitle="Station übersprungen"
+          onBack={() => router.push("/dashboard")}
+        />
+        <div className="flex-1 flex flex-col gap-6 pb-10">
+
+          <Card padding="md" className="border-amber-700/40">
+            <p className="text-amber-400 text-xs font-medium tracking-widest uppercase mb-3">
+              Station übersprungen
+            </p>
+            <p className="text-stone-400 text-sm leading-relaxed">
+              Ihr habt keinen Buchstaben für diese Station erhalten. Das Lösungswort
+              wird schwieriger zu knacken sein.
+            </p>
+          </Card>
+
+          {/* Next station hint — shown even after a skip */}
+          {nextStation && (
+            <Card padding="md">
+              <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
+                Eure nächste Station
+              </p>
+              <p className="text-sm font-semibold text-cream mb-2">{nextStation.title}</p>
+              <p className="text-stone-400 text-sm leading-relaxed">
+                {nextStation.locationHint}
+              </p>
+            </Card>
+          )}
 
           <Button
             variant="primary"
@@ -180,7 +275,7 @@ export default function MissionPage() {
     );
   }
 
-  // ── Completed station ─────────────────────────────────────────────────────
+  // ── Completed station (visited after solving) ─────────────────────────────
 
   if (stationStatus === "completed") {
     return (
@@ -216,6 +311,41 @@ export default function MissionPage() {
               </div>
               <p className="text-stone-400 text-sm">Fragment #{station.rewardNumber}</p>
             </div>
+          </Card>
+          <Button
+            variant="secondary"
+            className="w-full"
+            onClick={() => router.push("/dashboard")}
+          >
+            Zurück zur Übersicht
+          </Button>
+        </div>
+      </>
+    );
+  }
+
+  // ── Skipped station (visited after skipping) ──────────────────────────────
+
+  if (stationStatus === "skipped") {
+    return (
+      <>
+        <PageHeader
+          title={station.title}
+          subtitle="Mission: Strasbourg"
+          onBack={() => router.push("/dashboard")}
+          action={<Badge variant="skipped">Übersprungen</Badge>}
+        />
+        <div className="flex-1 flex flex-col gap-5 pb-10">
+          <Card padding="md">
+            <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
+              Euer Standort
+            </p>
+            <p className="text-stone-500 leading-relaxed">{station.locationHint}</p>
+          </Card>
+          <Card padding="md">
+            <p className="text-stone-500 text-sm leading-relaxed">
+              Diese Station wurde übersprungen. Es wurde kein Buchstabenfragment vergeben.
+            </p>
           </Card>
           <Button
             variant="secondary"
@@ -280,6 +410,64 @@ export default function MissionPage() {
               {loading ? "Wiederholen …" : "Erneut versuchen →"}
             </button>
           </div>
+        )}
+
+        {/* Skip section — appears after SKIP_THRESHOLD wrong attempts */}
+        {showSkipSection && (
+          <Card padding="md" className="border-amber-700/30">
+            {!skipConfirming ? (
+              /* Step 1: offer the choice */
+              <div className="flex flex-col gap-3">
+                <p className="text-amber-400 text-sm leading-relaxed">
+                  Noch nicht richtig. Ihr könnt weiterprobieren oder die Station
+                  überspringen (-3 Punkte).
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    onClick={() => setSkipConfirming(true)}
+                  >
+                    Station überspringen (-3 Punkte)
+                  </Button>
+                  <button
+                    type="button"
+                    className="text-sm text-stone-500 hover:text-stone-400 transition-colors duration-150 py-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500 rounded"
+                  >
+                    Weiter versuchen
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Step 2: confirm the skip */
+              <div className="flex flex-col gap-3">
+                <p className="text-amber-400 text-sm font-medium">
+                  Wirklich überspringen?
+                </p>
+                <p className="text-stone-400 text-sm leading-relaxed">
+                  Ihr erhaltet keinen Buchstaben für diese Station.
+                </p>
+                <div className="flex flex-col gap-2">
+                  <Button
+                    variant="danger"
+                    loading={loading}
+                    className="w-full"
+                    onClick={handleSkip}
+                  >
+                    Ja, Station überspringen
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    className="w-full"
+                    disabled={loading}
+                    onClick={() => setSkipConfirming(false)}
+                  >
+                    Nein, weiterversuchen
+                  </Button>
+                </div>
+              </div>
+            )}
+          </Card>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
