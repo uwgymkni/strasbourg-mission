@@ -1,0 +1,27 @@
+export type StationStatus = "locked" | "active" | "completed";
+
+export type ChallengeType = "text" | "qr" | "multiple-choice";
+
+export interface Station {
+  id: string;
+  order: number; // 1-based, used by unlockNextStation
+  title: string;
+  locationHint: string;
+  challengeType: ChallengeType;
+  observationQuestion: string;
+  acceptedAnswers: string[];
+  photoChallenge: string;
+  knowledgeText: string;
+  rewardLetter: string; // single letter; all 6 letters spell the final answer
+  rewardNumber: number; // 1-based position of this letter in the final answer
+}
+
+// Firestore document shape — used by services layer
+export interface TeamProgress {
+  teamId: string;
+  progress: Record<string, StationStatus>; // stationId → status
+  currentStationId: string | null;
+  startedAt: number; // Unix ms
+  finishedAt?: number;
+  finalAnswer: string | null; // null until the team submits the final cipher
+}

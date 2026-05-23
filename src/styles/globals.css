@@ -1,0 +1,49 @@
+@import "tailwindcss";
+
+@theme inline {
+  /* Navy palette */
+  --color-navy-950: #0B1426;
+  --color-navy-900: #111D36;
+  --color-navy-800: #1A2744;
+  --color-navy-700: #243560;
+  --color-navy-600: #2E4480;
+
+  /* Gold palette */
+  --color-gold-300: #F0D898;
+  --color-gold-400: #E8C97A;
+  --color-gold-500: #C9A84C;
+  --color-gold-600: #A8892A;
+  --color-gold-700: #7A6010;
+
+  /* Neutral */
+  --color-cream: #F0EBE1;
+  --color-stone-300: #C4CDD8;
+  --color-stone-400: #8A9BB0;
+  --color-stone-500: #5A6A80;
+  --color-stone-600: #3A4A60;
+
+  /* Typography */
+  --font-sans: var(--font-inter);
+  --font-display: var(--font-crimson-pro);
+}
+
+body {
+  background-color: #0B1426;
+  color: #F0EBE1;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  /* Prevent bounce scroll on iOS — this is a full-screen game, not a document */
+  overscroll-behavior: none;
+}
+
+/* Webkit scrollbar — minimal, matches dark theme */
+::-webkit-scrollbar {
+  width: 4px;
+}
+::-webkit-scrollbar-track {
+  background: #111D36;
+}
+::-webkit-scrollbar-thumb {
+  background: #243560;
+  border-radius: 2px;
+}

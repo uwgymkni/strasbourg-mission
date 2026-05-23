@@ -1,0 +1,58 @@
+rules_version = '2';
+
+// Strasbourg Mission — Firestore Security Rules
+//
+// Philosophy: deny everything by default, whitelist only expected patterns.
+// These are conservative starter rules. See TODOs for production hardening.
+//
+// Deploy with:  firebase deploy --only firestore:rules
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Default ──────────────────────────────────────────────────────────────
+    // Deny all access not matched by a rule below.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── stations/{stationId} ─────────────────────────────────────────────────
+    // Mission config. Seeded by admin before the event. Never written by clients.
+    match /stations/{stationId} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── teams/{teamCode} ─────────────────────────────────────────────────────
+    // Team registry. Created by admin. Clients read to validate team codes.
+    // The team code itself acts as a shared secret — keep codes short but non-guessable.
+    match /teams/{teamCode} {
+      allow read: if true;
+      allow write: if false;
+    }
+
+    // ── progress/{teamId} ────────────────────────────────────────────────────
+    // One document per team. Tracks station completion and final answer.
+    //
+    // ⚠️  WARNING: These rules permit any client to read and write any progress
+    // document because the app does not yet use Firebase Auth. A malicious user
+    // could read other teams' progress or submit a fabricated completion.
+    //
+    // TODO (before production):
+    //   1. Enable Firebase Anonymous Auth in the project.
+    //   2. Sign in users anonymously when they enter their team code.
+    //   3. Store the Firebase UID in the team document at login time.
+    //   4. Replace `if true` below with:
+    //        allow read, write: if request.auth != null
+    //                           && request.auth.uid == resource.data.teamId;
+    match /progress/{teamId} {
+      allow read: if true;
+
+      allow write: if true
+        // Basic shape validation — at minimum the document must declare its teamId.
+        && request.resource.data.keys().hasAll(["teamId"])
+        && request.resource.data.teamId is string;
+    }
+
+  }
+}
