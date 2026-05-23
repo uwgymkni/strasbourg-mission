@@ -37,7 +37,7 @@ export async function loginWithGroupCode(
   code: string
 ): Promise<ServiceResult<AppUser>> {
   try {
-    const normalized = code.trim().toLowerCase();
+    const normalized = code.trim().toUpperCase();
     if (!normalized) {
       return { success: false, error: "Team code cannot be empty." };
     }
