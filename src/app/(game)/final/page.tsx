@@ -59,7 +59,7 @@ export default function FinalPage() {
     clearError();
 
     if (answer.trim().toLowerCase() !== correctAnswer) {
-      setAnswerError("Incorrect. Use your collected letters to find the word.");
+      setAnswerError("Falsch. Setzt eure gesammelten Buchstaben in der richtigen Reihenfolge zusammen.");
       return;
     }
 
@@ -82,8 +82,8 @@ export default function FinalPage() {
   return (
     <>
       <PageHeader
-        title="The Final Cipher"
-        subtitle="Assemble the truth"
+        title="Der finale Code"
+        subtitle="Stellt die Wahrheit zusammen"
         onBack={() => router.push("/dashboard")}
       />
 
@@ -92,12 +92,12 @@ export default function FinalPage() {
         {/* Collected letters with position index */}
         <Card padding="md">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-4">
-            Your collected letters
+            Eure gesammelten Buchstaben
           </p>
 
           {sortedLetters.length === 0 ? (
             <p className="text-stone-600 text-sm">
-              {loading ? "Loading…" : "No letters found. Complete the stations first."}
+              {loading ? "Wird geladen …" : "Keine Buchstaben gefunden. Schließt zuerst die Stationen ab."}
             </p>
           ) : (
             <>
@@ -116,7 +116,7 @@ export default function FinalPage() {
                 ))}
               </div>
               <p className="text-stone-500 text-xs mt-4 text-center leading-relaxed">
-                Arrange these letters in order to form the final word.
+                Setzt diese Buchstaben in der richtigen Reihenfolge zusammen.
               </p>
             </>
           )}
@@ -132,21 +132,21 @@ export default function FinalPage() {
               onClick={handleRetry}
               className="mt-1 text-sm font-medium text-gold-500 hover:text-gold-400 disabled:opacity-50 focus-visible:outline-none"
             >
-              {loading ? "Retrying…" : "Try again →"}
+              {loading ? "Wiederholen …" : "Erneut versuchen →"}
             </button>
           </div>
         )}
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <Input
-            label="Final answer"
+            label="Lösungswort"
             value={answer}
             onChange={(e) => {
               setAnswerError(null);
               clearError();
               setAnswer(e.target.value);
             }}
-            placeholder="The assembled word"
+            placeholder="Das zusammengesetzte Wort"
             autoCorrect="off"
             autoCapitalize="characters"
             spellCheck={false}
@@ -161,7 +161,7 @@ export default function FinalPage() {
             disabled={!answer.trim() || loading}
             className="w-full"
           >
-            Reveal the Truth
+            Wahrheit enthüllen
           </Button>
         </form>
 

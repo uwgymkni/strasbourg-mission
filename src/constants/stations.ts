@@ -7,15 +7,15 @@ export const STATIONS: Station[] = [
     order: 1,
     title: "Place Gutenberg",
     locationHint:
-      "Rendez-vous Place Gutenberg, au cœur de la Grande Île. Positionnez-vous face à la statue en bronze.",
+      "Trefft euch am Place Gutenberg, im Herzen der Großen Insel. Stellt euch der Bronzestatue gegenüber.",
     challengeType: "text",
     observationQuestion:
-      "Quelle année est inscrite sur le socle de la statue de Gutenberg ?",
+      "Welche Jahreszahl ist auf dem Sockel der Gutenberg-Statue eingraviert?",
     acceptedAnswers: ["1840"],
     photoChallenge:
-      "Photographiez votre groupe en mimant la pose de Gutenberg — une main tendue comme s'il présentait une page imprimée.",
+      "Fotografiert eure Gruppe, wie ihr die Pose von Gutenberg nachahmt — eine Hand ausgestreckt, als würde er eine gedruckte Seite präsentieren.",
     knowledgeText:
-      "Johannes Gutenberg a séjourné à Strasbourg entre 1434 et 1444, où il développa ses premières expériences d'impression avant d'inventer la presse à caractères mobiles à Mayence. La statue de bronze inaugurée en 1840 le représente tenant la première page imprimée de l'histoire.",
+      "Johannes Gutenberg hielt sich zwischen 1434 und 1444 in Straßburg auf, wo er erste Druckexperimente durchführte, bevor er die Druckerpresse mit beweglichen Lettern in Mainz erfand. Die 1840 eingeweihte Bronzestatue zeigt ihn, wie er die erste gedruckte Seite der Geschichte in den Händen hält.",
     rewardLetter: "A",
     rewardNumber: 1,
   },
@@ -24,15 +24,15 @@ export const STATIONS: Station[] = [
     order: 2,
     title: "Place Kléber",
     locationHint:
-      "Rejoignez la Place Kléber, la plus grande place de Strasbourg. Approchez-vous de la statue centrale du général.",
+      "Geht zum Place Kléber, dem größten Platz Straßburgs. Nähert euch der zentralen Statue des Generals.",
     challengeType: "text",
     observationQuestion:
-      "D'après l'inscription sur le socle, dans quelle ville le général Kléber est-il né ?",
-    acceptedAnswers: ["Strasbourg", "strasbourg", "STRASBOURG"],
+      "Laut der Inschrift auf dem Sockel: In welcher Stadt wurde General Kléber geboren?",
+    acceptedAnswers: ["Strasbourg", "strasbourg", "STRASBOURG", "Straßburg"],
     photoChallenge:
-      "Prenez une photo de groupe avec la statue du général Kléber en arrière-plan, en saluant militairement.",
+      "Macht ein Gruppenfoto mit der Statue von General Kléber im Hintergrund — und grüßt militärisch!",
     knowledgeText:
-      "Jean-Baptiste Kléber (1753–1800) est le plus célèbre des généraux strasbourgeois. Né dans la ville, il commanda les armées de la République française et fut assassiné au Caire. Ses cendres reposent sous la dalle de sa propre statue depuis 1838 — il est littéralement enterré sur la place principale de sa ville natale.",
+      "Jean-Baptiste Kléber (1753–1800) ist der bekannteste General aus Straßburg. Als gebürtiger Straßburger befehligte er die Armeen der Französischen Republik und wurde in Kairo ermordet. Seine Asche ruht seit 1838 unter der Bodenplatte seiner eigenen Statue — er ist buchstäblich auf dem Hauptplatz seiner Heimatstadt begraben.",
     rewardLetter: "L",
     rewardNumber: 2,
   },
@@ -41,23 +41,24 @@ export const STATIONS: Station[] = [
     order: 3,
     title: "Petite France",
     locationHint:
-      "Dirigez-vous vers la Petite France. Arrêtez-vous rue du Bain-aux-Plantes face aux maisons de tanneurs aux façades colorées.",
+      "Geht in die Petite France. Haltet am Gerberviertel (Rue du Bain-aux-Plantes) vor den bunten Häusern mit typischen Fachwerk-Fassaden an.",
     challengeType: "text",
     observationQuestion:
-      "Comment appelle-t-on le style architectural de ces maisons avec des structures en bois apparent croisé ? (Un mot)",
+      "Wie nennt man diese Bauweise mit sichtbarem Holzgerüst? (Ein Wort, Deutsch oder Französisch)",
     acceptedAnswers: [
+      "Fachwerk",
+      "fachwerk",
+      "FACHWERK",
       "colombages",
       "Colombages",
       "COLOMBAGES",
-      "à colombages",
       "pan de bois",
-      "Fachwerk",
-      "fachwerk",
+      "à colombages",
     ],
     photoChallenge:
-      "Photographiez la façade la plus colorée visible depuis votre position en cadrant les reflets dans le canal.",
+      "Fotografiert die bunteste Hausfassade, die von eurer Position aus sichtbar ist — achtet dabei auf die Spiegelungen im Kanal.",
     knowledgeText:
-      "La Petite France doit paradoxalement son nom à une maison de soins pour soldats atteints de syphilis au XVIe siècle — les Alsaciens appelaient alors cette maladie « mal français ». Les maisons à colombages qui bordent les canaux étaient autrefois habitées par des tanneurs et des meuniers qui utilisaient le courant de l'Ill pour faire tourner leurs moulins.",
+      "Das Viertel 'Petite France' verdankt seinen Namen paradoxerweise einem Behandlungshaus für erkrankte Soldaten im 16. Jahrhundert. Die Fachwerkhäuser entlang der Kanäle wurden früher von Gerbern und Müllern bewohnt, die die Strömung der Ill für ihre Mühlen nutzten.",
     rewardLetter: "S",
     rewardNumber: 3,
   },
@@ -66,15 +67,15 @@ export const STATIONS: Station[] = [
     order: 4,
     title: "Ponts Couverts",
     locationHint:
-      "Rejoignez les Ponts Couverts. Placez-vous sur le premier pont et regardez en direction des tours médiévales.",
+      "Geht zu den Ponts Couverts. Stellt euch auf die erste Brücke und schaut in Richtung der mittelalterlichen Türme.",
     challengeType: "text",
     observationQuestion:
-      "Combien de tours médiévales pouvez-vous compter depuis ce pont ?",
-    acceptedAnswers: ["3", "trois", "Trois", "TROIS"],
+      "Wie viele mittelalterliche Türme könnt ihr von dieser Brücke aus zählen?",
+    acceptedAnswers: ["3", "drei", "Drei", "DREI"],
     photoChallenge:
-      "Réalisez un panoramique en photo montrant les tours et les bras de l'Ill depuis le pont.",
+      "Macht ein Panoramafoto, das die Türme und die Flussarme der Ill von der Brücke aus zeigt.",
     knowledgeText:
-      "Les Ponts Couverts, construits au XIIIe siècle, formaient la première ligne de défense de Strasbourg. Ils étaient à l'origine couverts d'un toit en bois — celui-ci a disparu après la Révolution française, d'où leur nom devenu paradoxal. Il y avait initialement quatre tours ; la quatrième fut démolie au XIXe siècle pour élargir la circulation. Chaque tour porte le nom d'une ancienne corporation de la ville.",
+      "Die im 13. Jahrhundert erbauten Ponts Couverts bildeten die erste Verteidigungslinie Straßburgs. Ursprünglich waren sie mit einem Holzdach bedeckt — dieses verschwand nach der Französischen Revolution, weshalb ihr Name heute paradox klingt. Es gab ursprünglich vier Türme; der vierte wurde im 19. Jahrhundert abgerissen. Jeder Turm trägt den Namen einer alten Straßburger Zunft.",
     rewardLetter: "A",
     rewardNumber: 4,
   },
@@ -83,10 +84,10 @@ export const STATIONS: Station[] = [
     order: 5,
     title: "Barrage Vauban",
     locationHint:
-      "Montez sur la terrasse panoramique du Barrage Vauban, accessible par l'escalier depuis le quai. La vue sur les toits de Strasbourg vaut le détour.",
+      "Geht auf die Aussichtsterrasse des Barrage Vauban, erreichbar über die Treppe vom Kai aus. Der Blick über die Straßburger Dächer lohnt sich!",
     challengeType: "text",
     observationQuestion:
-      "Quel ingénieur militaire de Louis XIV a conçu ce barrage qui porte son nom ? (Nom de famille uniquement)",
+      "Welcher Militäringenieur Ludwigs XIV. hat diesen Damm entworfen, der seinen Namen trägt? (Nur Nachname)",
     acceptedAnswers: [
       "Vauban",
       "vauban",
@@ -95,26 +96,26 @@ export const STATIONS: Station[] = [
       "Sébastien Vauban",
     ],
     photoChallenge:
-      "Depuis la terrasse, photographiez le panorama sur les toits de Strasbourg avec la flèche de la cathédrale en arrière-plan.",
+      "Fotografiert von der Terrasse aus das Panorama über die Straßburger Dächer mit dem Münsterturm im Hintergrund.",
     knowledgeText:
-      "Le Barrage Vauban fut construit entre 1686 et 1690 sur ordre de Louis XIV. En cas d'attaque ennemie, on soulevait ses vannes pour inonder les faubourgs sud et freiner l'avancée des troupes adverses. Le bâtiment abrite aujourd'hui une galerie de sculptures médiévales provenant de la cathédrale Notre-Dame, protégées de l'usure des intempéries.",
+      "Der Barrage Vauban wurde zwischen 1686 und 1690 im Auftrag von Ludwig XIV. gebaut. Im Falle eines feindlichen Angriffs konnten die Schleusen angehoben werden, um die südlichen Vororte zu überfluten und den Truppenvormarsch zu bremsen. Das Gebäude beherbergt heute eine Galerie mit mittelalterlichen Skulpturen aus dem Straßburger Münster.",
     rewardLetter: "C",
     rewardNumber: 5,
   },
   {
     id: "station-6",
     order: 6,
-    title: "Maison Kammerzell",
+    title: "Haus Kammerzell",
     locationHint:
-      "Revenez vers la Cathédrale Notre-Dame. Face au parvis, cherchez la Maison Kammerzell sur votre gauche — reconnaissable à ses trois étages de bois sculpté.",
+      "Geht zurück zum Straßburger Münster. Vor dem Eingangsportal sucht ihr links das Haus Kammerzell — erkennbar an seinen drei Stockwerken aus geschnitztem Holz.",
     challengeType: "text",
     observationQuestion:
-      "En quelle année la partie en pierre du rez-de-chaussée de la Maison Kammerzell a-t-elle été construite ? (Cherchez la date sur la façade)",
+      "In welchem Jahr wurde das steinerne Erdgeschoss des Hauses Kammerzell errichtet? (Jahreszahl an der Fassade suchen)",
     acceptedAnswers: ["1467", "XVe siècle", "15e siècle", "xve siècle"],
     photoChallenge:
-      "Photographiez en gros plan l'un des panneaux sculptés de la façade en bois — chaque panneau représente un thème différent : les sens, les planètes ou les héros de l'Antiquité.",
+      "Fotografiert eine der geschnitzten Tafeln an der Holzfassade aus der Nähe — jede Tafel stellt ein anderes Thema dar: Sinne, Planeten oder Helden der Antike.",
     knowledgeText:
-      "La Maison Kammerzell est considérée comme l'une des plus belles maisons médiévales d'Alsace. Construite en deux phases — rez-de-chaussée en grès rose en 1467, étages en bois sculpté en 1589 — elle doit son nom à un fromager alsacien qui la posséda au XVIIIe siècle. Ses 36 panneaux sculptés représentent les cinq sens, les sept planètes connues à l'époque et des héros de l'Antiquité.",
+      "Das Haus Kammerzell gilt als eines der schönsten mittelalterlichen Häuser im Elsass. Es wurde in zwei Phasen erbaut — Erdgeschoss aus rosa Sandstein im Jahr 1467, Holzetagen mit Schnitzereien im Jahr 1589. Es verdankt seinen Namen einem elsässischen Käsehändler des 18. Jahrhunderts. Die 36 Schnitzereien stellen die fünf Sinne, die sieben damals bekannten Planeten und Helden der Antike dar.",
     rewardLetter: "E",
     rewardNumber: 6,
   },

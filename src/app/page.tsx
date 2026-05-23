@@ -5,12 +5,13 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore, selectUser } from "@/stores/auth.store";
 import { Button } from "@/components/ui/Button";
+import { SchoolLogo } from "@/components/layout/SchoolLogo";
 
 const MISSION_RULES = [
-  "Work as a team — every clue leads to the next location.",
-  "Observe carefully — answers are always visible on site.",
-  "Enter your code only once you are certain.",
-  "Submit your final word when all stations are complete.",
+  "Arbeitet als Team — jeder Hinweis führt zum nächsten Ort.",
+  "Beobachtet genau — die Antworten sind immer vor Ort sichtbar.",
+  "Gebt eure Antwort erst ein, wenn ihr sicher seid.",
+  "Gebt das Lösungswort ein, sobald alle Stationen abgeschlossen sind.",
 ];
 
 export default function LandingPage() {
@@ -26,8 +27,14 @@ export default function LandingPage() {
   }, []); // once on mount — redirects before the user can interact
 
   return (
-    <div className="min-h-dvh flex flex-col bg-navy-950 px-6">
-      <main className="flex-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto py-16">
+    <div className="min-h-dvh flex flex-col bg-navy-950 px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">
+      <main className="flex-1 flex flex-col items-center justify-center w-full max-w-sm mx-auto py-12">
+
+        {/* School logo */}
+        <div className="flex items-center gap-2.5 mb-10">
+          <SchoolLogo size={28} />
+          <span className="text-xs text-stone-500 tracking-wide">BG/BRG Knittelfeld</span>
+        </div>
 
         {/* Emblem */}
         <div className="flex items-center justify-center w-20 h-20 rounded-full border border-gold-500/30">
@@ -39,13 +46,13 @@ export default function LandingPage() {
         {/* Title */}
         <div className="text-center mt-8">
           <p className="text-gold-500 text-xs font-medium tracking-widest uppercase mb-4">
-            Classified
+            Geheim
           </p>
           <h1 className="font-display text-5xl font-semibold text-cream leading-tight">
             Strasbourg<br />Mission
           </h1>
           <p className="text-stone-400 mt-4 leading-relaxed">
-            Uncover the city's secrets.<br />Follow the clues. Work as a team.
+            Entdeckt die Geheimnisse der Stadt.<br />Folgt den Hinweisen. Arbeitet als Team.
           </p>
         </div>
 
@@ -63,12 +70,17 @@ export default function LandingPage() {
         <div className="w-full mt-10">
           <Link href="/login" className="block">
             <Button variant="primary" className="w-full">
-              Start Mission
+              Mission starten
             </Button>
           </Link>
         </div>
 
       </main>
+
+      {/* School footer */}
+      <p className="text-center text-xs text-stone-700 tracking-wide py-4">
+        Entwickelt am BG/BRG Knittelfeld
+      </p>
     </div>
   );
 }

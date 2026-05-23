@@ -13,13 +13,13 @@ export function err(error: unknown): ServiceResult<never> {
     // Map Firebase error codes to student-friendly strings before stripping the prefix.
     // These codes appear inside the brackets: "[firestore/unavailable] ..."
     if (/\[firestore\/unavailable\]|\[firestore\/cancelled\]/.test(msg)) {
-      return { success: false, error: "Connection lost. Check your signal and try again." };
+      return { success: false, error: "Verbindung unterbrochen. Überprüft euer Signal und versucht es erneut." };
     }
     if (/\[firestore\/permission-denied\]/.test(msg)) {
-      return { success: false, error: "Access denied. Contact your coordinator." };
+      return { success: false, error: "Zugriff verweigert. Kontaktiert euren Koordinator." };
     }
     if (/\[firestore\/not-found\]/.test(msg)) {
-      return { success: false, error: "Data not found. The mission may not be set up yet." };
+      return { success: false, error: "Daten nicht gefunden. Die Mission wurde möglicherweise noch nicht eingerichtet." };
     }
 
     // Strip internal prefix: "[firestore/...] actual message" → "actual message"
@@ -28,10 +28,10 @@ export function err(error: unknown): ServiceResult<never> {
     // Catch network-related messages that don't carry a Firebase error code
     // (e.g. fetch failures in Service Worker contexts, WebChannel transport errors).
     if (/offline|Connection failed|WebChannelConnection|Failed to fetch|network error/i.test(stripped)) {
-      return { success: false, error: "Connection lost. Check your signal and try again." };
+      return { success: false, error: "Verbindung unterbrochen. Überprüft euer Signal und versucht es erneut." };
     }
 
-    return { success: false, error: stripped || "Something went wrong. Please try again." };
+    return { success: false, error: stripped || "Etwas ist schiefgelaufen. Bitte versucht es erneut." };
   }
-  return { success: false, error: "Something went wrong. Please try again." };
+  return { success: false, error: "Etwas ist schiefgelaufen. Bitte versucht es erneut." };
 }

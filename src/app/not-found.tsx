@@ -8,13 +8,13 @@ export default function NotFound() {
         404
       </p>
       <h1 className="font-display text-3xl font-semibold text-cream mb-2">
-        Location not found
+        Ort nicht gefunden
       </h1>
       <p className="text-stone-400 text-sm mb-10">
-        This location does not exist in the mission archive.
+        Dieser Ort existiert nicht im Missionsarchiv.
       </p>
       <Link href="/">
-        <Button variant="ghost">Return to base</Button>
+        <Button variant="ghost">Zurück zum Start</Button>
       </Link>
     </div>
   );

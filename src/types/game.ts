@@ -24,4 +24,5 @@ export interface TeamProgress {
   startedAt: number; // Unix ms
   finishedAt?: number;
   finalAnswer: string | null; // null until the team submits the final cipher
+  members?: string[];          // team member names, saved on /team-members page
 }

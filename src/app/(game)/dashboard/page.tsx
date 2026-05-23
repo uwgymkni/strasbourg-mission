@@ -10,6 +10,12 @@ import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import type { StationStatus } from "@/types/game";
 
+const STATUS_LABEL_DE: Record<StationStatus, string> = {
+  active: "Aktiv",
+  completed: "Abgeschlossen",
+  locked: "Gesperrt",
+};
+
 export default function DashboardPage() {
   const router = useRouter();
   const user = useRequireAuth();
@@ -49,8 +55,8 @@ export default function DashboardPage() {
         title={user.teamName}
         subtitle={
           loading && stations.length === 0
-            ? "Loading mission data…"
-            : `${completedCount} of ${total} stations complete`
+            ? "Missionsdaten werden geladen …"
+            : `${completedCount} von ${total} Stationen abgeschlossen`
         }
       />
 
@@ -79,7 +85,7 @@ export default function DashboardPage() {
               onClick={handleRetry}
               className="mt-1 text-sm font-medium text-gold-500 hover:text-gold-400 disabled:opacity-50 focus-visible:outline-none"
             >
-              {loading ? "Retrying…" : "Try again →"}
+              {loading ? "Wiederholen …" : "Erneut versuchen →"}
             </button>
           </div>
         )}
@@ -118,8 +124,8 @@ export default function DashboardPage() {
                       {station.title}
                     </span>
                   </div>
-                  <Badge variant={status} className="shrink-0 capitalize">
-                    {status}
+                  <Badge variant={status} className="shrink-0">
+                    {STATUS_LABEL_DE[status]}
                   </Badge>
                 </div>
               </Card>
@@ -142,7 +148,7 @@ export default function DashboardPage() {
           {!loading && stations.length === 0 && (
             <Card padding="md">
               <p className="text-stone-500 text-sm leading-relaxed">
-                No stations loaded. Check your connection or contact your coordinator.
+                Keine Stationen geladen. Überprüft eure Verbindung oder kontaktiert euren Koordinator.
               </p>
             </Card>
           )}
@@ -151,11 +157,11 @@ export default function DashboardPage() {
         {/* Collected code letters */}
         <Card padding="sm">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-3">
-            Collected code fragments
+            Gesammelte Buchstaben
           </p>
           {collectedLetters.length === 0 ? (
             <p className="text-stone-600 text-sm">
-              Complete a station to collect your first letter.
+              Schließt eine Station ab, um euren ersten Buchstaben zu sammeln.
             </p>
           ) : (
             <div className="flex flex-wrap gap-2 items-center">
@@ -166,7 +172,7 @@ export default function DashboardPage() {
               ))}
               {collectedLetters.length < total && (
                 <span className="text-stone-600 text-sm">
-                  + {total - collectedLetters.length} more to discover
+                  + {total - collectedLetters.length} weitere zu entdecken
                 </span>
               )}
             </div>
@@ -180,7 +186,7 @@ export default function DashboardPage() {
             className="w-full"
             onClick={() => router.push("/final")}
           >
-            Proceed to Final Cipher
+            Zum finalen Code
           </Button>
         )}
 

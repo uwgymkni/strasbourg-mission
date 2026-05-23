@@ -176,6 +176,24 @@ export async function persistProgress(
   }
 }
 
+/**
+ * Saves team member names into the progress document.
+ * Called from the /team-members page before navigating to /dashboard.
+ */
+export async function saveTeamMembers(
+  teamId: string,
+  members: string[]
+): Promise<ServiceResult<void>> {
+  try {
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+      members,
+    });
+    return ok(undefined);
+  } catch (error) {
+    return err(error);
+  }
+}
+
 /** Records the team's final answer and timestamps their finish. */
 export async function submitFinalSolution(
   teamId: string,

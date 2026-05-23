@@ -39,13 +39,13 @@ export async function loginWithGroupCode(
   try {
     const normalized = code.trim().toUpperCase();
     if (!normalized) {
-      return { success: false, error: "Team code cannot be empty." };
+      return { success: false, error: "Bitte Team auswählen." };
     }
 
     const snap = await getDoc(doc(getDb(), COLLECTIONS.TEAMS, normalized));
 
     if (!snap.exists()) {
-      return { success: false, error: "Team code not found. Check the code and try again." };
+      return { success: false, error: "Team nicht gefunden. Überprüft eure Auswahl und versucht es erneut." };
     }
 
     return ok(normalizeTeamDoc(snap.id, snap.data() as Record<string, unknown>));

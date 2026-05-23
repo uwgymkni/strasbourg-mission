@@ -22,7 +22,7 @@ export const metadata: Metadata = {
     default: "Strasbourg Mission",
     template: "%s — Strasbourg Mission",
   },
-  description: "An educational escape mission through the streets of Strasbourg.",
+  description: "Ein pädagogisches Erkundungsspiel durch die Straßen Straßburgs — BG/BRG Knittelfeld.",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
@@ -43,7 +43,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="fr" className={`${inter.variable} ${crimsonPro.variable}`}>
+    <html lang="de" className={`${inter.variable} ${crimsonPro.variable}`}>
       <body className="bg-navy-950 text-cream antialiased font-sans">
         <AppProvider>{children}</AppProvider>
       </body>

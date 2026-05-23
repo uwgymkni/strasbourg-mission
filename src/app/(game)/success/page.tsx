@@ -39,21 +39,20 @@ export default function SuccessPage() {
       {/* Message */}
       <div className="text-center mt-8">
         <p className="text-gold-500 text-xs font-medium tracking-widest uppercase mb-3">
-          Mission Complete
+          Mission erfüllt
         </p>
         <h1 className="font-display text-4xl font-semibold text-cream leading-tight">
-          Truth Uncovered
+          Wahrheit enthüllt
         </h1>
         <p className="text-stone-400 text-sm mt-4 leading-relaxed max-w-xs">
-          Your team has navigated the streets of Strasbourg and revealed the
-          secret hidden in plain sight.
+          Euer Team hat die Straßen von Straßburg erkundet und das verborgene Geheimnis aufgedeckt.
         </p>
       </div>
 
       {/* Result card */}
       <Card padding="md" className="w-full mt-10">
         <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-4">
-          Your result
+          Euer Ergebnis
         </p>
 
         {/* Final word letter tiles */}
@@ -78,7 +77,7 @@ export default function SuccessPage() {
             <span className="text-cream text-sm font-medium">{user.teamName}</span>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-stone-400 text-sm">Stations</span>
+            <span className="text-stone-400 text-sm">Stationen</span>
             <Badge variant="completed">{completedCount} / {total}</Badge>
           </div>
         </div>
@@ -89,7 +88,7 @@ export default function SuccessPage() {
         className="mt-8"
         onClick={() => router.push("/")}
       >
-        Return to base
+        Zurück zum Start
       </Button>
 
     </div>

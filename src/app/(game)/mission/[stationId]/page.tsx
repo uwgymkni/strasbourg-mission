@@ -17,9 +17,9 @@ function isAnswerCorrect(input: string, accepted: string[]): boolean {
 }
 
 const STATUS_LABEL: Record<StationStatus, string> = {
-  active: "Active",
-  completed: "Completed",
-  locked: "Locked",
+  active: "Aktiv",
+  completed: "Abgeschlossen",
+  locked: "Gesperrt",
 };
 
 export default function MissionPage() {
@@ -71,13 +71,13 @@ export default function MissionPage() {
 
     // 1. Validate locally — no Firebase call if wrong
     if (!isAnswerCorrect(answer, station.acceptedAnswers)) {
-      setAnswerError("Incorrect answer. Look more carefully at the location.");
+      setAnswerError("Falsche Antwort. Schaut noch einmal genau vor Ort nach.");
       return;
     }
 
     // 2. Guard: only the current active station can be completed
     if (stationId !== currentStationId) {
-      setAnswerError("This station cannot be completed right now.");
+      setAnswerError("Diese Station kann gerade nicht abgeschlossen werden.");
       return;
     }
 
@@ -106,7 +106,7 @@ export default function MissionPage() {
         />
         <div className="flex-1 flex items-center justify-center">
           <p className="text-stone-500 text-sm">
-            {loading ? "Loading…" : "Station not found."}
+            {loading ? "Wird geladen …" : "Station nicht gefunden."}
           </p>
         </div>
       </>
@@ -120,13 +120,13 @@ export default function MissionPage() {
       <>
         <PageHeader
           title={station.title}
-          subtitle="Fragment collected"
+          subtitle="Buchstabenfragment gesammelt"
           onBack={() => router.push("/dashboard")}
         />
         <div className="flex-1 flex flex-col items-center justify-center gap-8 pb-10">
           <div className="text-center">
             <p className="text-gold-500 text-xs font-medium tracking-widest uppercase mb-6">
-              Code Fragment Collected
+              Buchstabenfragment gesammelt
             </p>
             <div className="flex items-center justify-center w-32 h-32 rounded-full border border-gold-500/40 mx-auto">
               <div className="flex items-center justify-center w-20 h-20 rounded-full border border-gold-500/60 bg-gold-500/5">
@@ -136,7 +136,7 @@ export default function MissionPage() {
               </div>
             </div>
             <p className="text-stone-400 text-sm mt-6">
-              Station {station.order} of {stations.length} complete
+              Station {station.order} von {stations.length} abgeschlossen
             </p>
           </div>
 
@@ -145,7 +145,7 @@ export default function MissionPage() {
             className="w-full"
             onClick={() => router.push("/dashboard")}
           >
-            Return to Dashboard
+            Zurück zur Übersicht
           </Button>
         </div>
       </>
@@ -161,18 +161,18 @@ export default function MissionPage() {
           title={station.title}
           subtitle="Mission: Strasbourg"
           onBack={() => router.push("/dashboard")}
-          action={<Badge variant="locked">Locked</Badge>}
+          action={<Badge variant="locked">Gesperrt</Badge>}
         />
         <div className="flex-1 flex flex-col gap-5 pb-10">
           <Card padding="md">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
-              Location
+              Euer Standort
             </p>
             <p className="text-stone-500 leading-relaxed">{station.locationHint}</p>
           </Card>
           <Card padding="md">
             <p className="text-stone-500 text-sm leading-relaxed">
-              Complete the previous station to unlock this challenge.
+              Schließt die vorherige Station ab, um diese Aufgabe freizuschalten.
             </p>
           </Card>
         </div>
@@ -189,24 +189,24 @@ export default function MissionPage() {
           title={station.title}
           subtitle="Mission: Strasbourg"
           onBack={() => router.push("/dashboard")}
-          action={<Badge variant="completed">Completed</Badge>}
+          action={<Badge variant="completed">Abgeschlossen</Badge>}
         />
         <div className="flex-1 flex flex-col gap-5 pb-10">
           <Card padding="md">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
-              Location
+              Euer Standort
             </p>
             <p className="text-cream leading-relaxed">{station.locationHint}</p>
           </Card>
           <Card padding="md">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
-              Historical context
+              Historischer Hintergrund
             </p>
             <p className="text-stone-400 text-sm leading-relaxed">{station.knowledgeText}</p>
           </Card>
           <Card padding="md">
             <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-3">
-              Your collected letter
+              Euer gesammelter Buchstabe
             </p>
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-center w-12 h-12 rounded-full border border-gold-500/60 bg-gold-500/5">
@@ -222,7 +222,7 @@ export default function MissionPage() {
             className="w-full"
             onClick={() => router.push("/dashboard")}
           >
-            Back to Dashboard
+            Zurück zur Übersicht
           </Button>
         </div>
       </>
@@ -235,7 +235,7 @@ export default function MissionPage() {
     <>
       <PageHeader
         title={station.title}
-        subtitle="Observe carefully"
+        subtitle="Genau beobachten"
         onBack={() => router.push("/dashboard")}
         action={
           <Badge variant={stationStatus}>
@@ -248,21 +248,21 @@ export default function MissionPage() {
 
         <Card padding="md">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
-            Your location
+            Euer Standort
           </p>
           <p className="text-cream leading-relaxed">{station.locationHint}</p>
         </Card>
 
         <Card padding="md">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
-            Photo challenge
+            Fotoaufgabe
           </p>
           <p className="text-stone-400 text-sm leading-relaxed">{station.photoChallenge}</p>
         </Card>
 
         <Card padding="md">
           <p className="text-xs font-medium text-stone-500 uppercase tracking-widest mb-2">
-            Historical context
+            Historischer Hintergrund
           </p>
           <p className="text-stone-400 text-sm leading-relaxed">{station.knowledgeText}</p>
         </Card>
@@ -277,7 +277,7 @@ export default function MissionPage() {
               onClick={handleRetry}
               className="mt-1 text-sm font-medium text-gold-500 hover:text-gold-400 disabled:opacity-50 focus-visible:outline-none"
             >
-              {loading ? "Retrying…" : "Try again →"}
+              {loading ? "Wiederholen …" : "Erneut versuchen →"}
             </button>
           </div>
         )}
@@ -291,7 +291,7 @@ export default function MissionPage() {
               clearError();
               setAnswer(e.target.value);
             }}
-            placeholder="Your answer"
+            placeholder="Eure Antwort"
             autoCorrect="off"
             autoCapitalize="off"
             error={answerError ?? undefined}
@@ -305,7 +305,7 @@ export default function MissionPage() {
             disabled={!answer.trim() || loading}
             className="w-full"
           >
-            Submit Answer
+            Antwort absenden
           </Button>
         </form>
 

@@ -17,18 +17,17 @@ export default function Error({ error, reset }: ErrorProps) {
     <div className="min-h-dvh flex flex-col items-center justify-center bg-navy-950 px-6">
       <div className="w-full max-w-sm text-center">
         <p className="text-gold-500 text-xs font-medium tracking-widest uppercase mb-4">
-          Something went wrong
+          Fehler aufgetreten
         </p>
         <h1 className="font-display text-3xl font-semibold text-cream mb-3">
-          Unexpected error
+          Unerwarteter Fehler
         </h1>
         <p className="text-stone-400 text-sm leading-relaxed mb-8">
-          The mission hit a snag. Try restarting this screen, or return to the
-          dashboard.
+          Die Mission hat einen Fehler ausgelöst. Versucht es erneut oder kehrt zur Übersicht zurück.
         </p>
         <div className="flex flex-col gap-3">
           <Button variant="primary" className="w-full" onClick={reset}>
-            Try again
+            Erneut versuchen
           </Button>
           <Button
             variant="ghost"
@@ -37,7 +36,7 @@ export default function Error({ error, reset }: ErrorProps) {
               window.location.href = "/dashboard";
             }}
           >
-            Return to dashboard
+            Zur Übersicht
           </Button>
         </div>
       </div>

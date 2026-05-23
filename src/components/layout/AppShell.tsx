@@ -29,6 +29,13 @@ function AppShell({ children, footer }: AppShellProps) {
           {footer}
         </footer>
       )}
+
+      {/* School credit — shown on all game pages */}
+      <div className="w-full py-3 pb-[max(12px,env(safe-area-inset-bottom))]">
+        <p className="text-center text-xs text-stone-700 tracking-wide">
+          Entwickelt am BG/BRG Knittelfeld
+        </p>
+      </div>
     </div>
   );
 }
