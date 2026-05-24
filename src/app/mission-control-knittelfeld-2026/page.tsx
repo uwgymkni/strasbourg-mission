@@ -34,6 +34,7 @@ interface TeamSummary {
   startedAt: number; // 0 = never started
   members: string[];
   totalWrongAnswers: number;
+  photos: Record<string, string>; // stationId → Storage download URL (empty = no photos)
 }
 
 function buildSummaries(
@@ -75,6 +76,7 @@ function buildSummaries(
         startedAt:           prog?.startedAt ?? 0,
         members:             prog?.members ?? [],
         totalWrongAnswers,
+        photos:              prog?.photos ?? {},
       };
     })
     .sort((a, b) => {
@@ -177,6 +179,50 @@ function StatusCell({ s }: { s: TeamSummary }) {
     );
   }
   return <span className="text-xs text-stone-600">Nicht gestartet</span>;
+}
+
+/**
+ * Renders thumbnail row of all photos a team has uploaded, sorted by station
+ * order. Each thumb is a plain <a target="_blank"> — no modal, no lightbox.
+ * Empty state shows "—" so the column never collapses visually.
+ */
+function PhotoList({
+  photos,
+  stations,
+}: {
+  photos: Record<string, string>;
+  stations: Station[];
+}) {
+  const items = stations
+    .filter((st) => photos[st.id])
+    .map((st) => ({ id: st.id, title: st.title, url: photos[st.id]! }));
+
+  if (items.length === 0) {
+    return <span className="text-stone-700">—</span>;
+  }
+
+  return (
+    <div className="flex gap-1.5 flex-wrap max-w-[180px]">
+      {items.map((p) => (
+        <a
+          key={p.id}
+          href={p.url}
+          target="_blank"
+          rel="noopener noreferrer"
+          title={p.title}
+          className="block"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={p.url}
+            alt={`Foto: ${p.title}`}
+            loading="lazy"
+            className="w-10 h-10 rounded object-cover border border-navy-700 hover:border-gold-500/60 transition-colors"
+          />
+        </a>
+      ))}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -438,19 +484,22 @@ export default function MissionControlPage() {
                 <th className="text-left px-5 py-4 text-stone-400 font-medium hidden md:table-cell">Fehler</th>
                 <th className="text-left px-5 py-4 text-stone-400 font-medium">Status</th>
                 <th className="text-left px-5 py-4 text-stone-400 font-medium hidden md:table-cell">Zeit</th>
+                <th className="text-left px-5 py-4 text-stone-400 font-medium hidden md:table-cell">Fotos</th>
                 <th className="w-px px-4 py-4" />{/* Reset — no header text */}
               </tr>
             </thead>
             <tbody>
 
-              {/* Skeleton rows on initial load */}
+              {/* Skeleton rows on initial load.
+                  Column order: Team, Fortschritt, Aktuelle Station, Fehler,
+                  Status, Zeit, Fotos, Reset. Indices 2,3,5,6 are md-only. */}
               {loading && summaries.length === 0 && (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-navy-700/50">
-                    {[28, 20, 32, 10, 14, 14, 6].map((w, j) => (
+                    {[28, 20, 32, 10, 14, 14, 18, 6].map((w, j) => (
                       <td
                         key={j}
-                        className={`px-5 py-4${j >= 2 && j !== 4 && j !== 6 ? " hidden md:table-cell" : ""}`}
+                        className={`px-5 py-4${[2, 3, 5, 6].includes(j) ? " hidden md:table-cell" : ""}`}
                       >
                         <div
                           className="h-4 bg-navy-700 rounded animate-pulse"
@@ -465,7 +514,7 @@ export default function MissionControlPage() {
               {/* Empty state */}
               {!loading && summaries.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="px-5 py-8 text-center text-stone-500 italic">
+                  <td colSpan={8} className="px-5 py-8 text-center text-stone-500 italic">
                     Keine Teams gefunden. Zuerst das Seed-Skript ausführen.
                   </td>
                 </tr>
@@ -553,6 +602,11 @@ export default function MissionControlPage() {
                           Fertig {formatTime(s.finishedAt)}
                         </p>
                       )}
+                    </td>
+
+                    {/* Fotos --------------------------------------- */}
+                    <td className="px-5 py-4 hidden md:table-cell">
+                      <PhotoList photos={s.photos} stations={stationsRef.current} />
                     </td>
 
                     {/* Reset --------------------------------------- */}
