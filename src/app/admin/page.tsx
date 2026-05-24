@@ -203,9 +203,13 @@ export default function AdminPage() {
   const [, setTick] = useState(0);
 
   // teamId whose reset button is in "Sicher?" confirm state; null = none open.
-  const [confirmResetId, setConfirmResetId] = useState<string | null>(null);
+  const [confirmResetId,  setConfirmResetId]  = useState<string | null>(null);
   // teamIds whose Firestore reset is currently in-flight (disable the button).
-  const [resettingIds,   setResettingIds]   = useState<Set<string>>(new Set());
+  const [resettingIds,    setResettingIds]    = useState<Set<string>>(new Set());
+
+  // Global reset state — two-step confirm + in-flight loading for "reset all".
+  const [confirmResetAll, setConfirmResetAll] = useState(false);
+  const [resettingAll,    setResettingAll]    = useState(false);
 
   // ------------------------------------------------------------------
   // Data loading
@@ -289,6 +293,30 @@ export default function AdminPage() {
     }
   }
 
+  /**
+   * Resets every student team in parallel.
+   * Safe by construction: summaries only ever contains role === "student" teams
+   * (buildSummaries() filters them), so admin accounts cannot reach this path.
+   */
+  async function handleResetAll(): Promise<void> {
+    setResettingAll(true);
+    setConfirmResetAll(false);
+    setError(null);
+
+    const results = await Promise.all(
+      summaries.map((s) => resetTeamProgress(s.teamId))
+    );
+
+    setResettingAll(false);
+
+    const failCount = results.filter((r) => !r.success).length;
+    if (failCount > 0) {
+      setError(`${failCount} Team(s) konnten nicht zurückgesetzt werden.`);
+    }
+
+    void loadProgress(true);
+  }
+
   // ------------------------------------------------------------------
   // Guard
   // ------------------------------------------------------------------
@@ -330,20 +358,62 @@ export default function AdminPage() {
                   : `Letzte Aktualisierung vor ${secondsAgo} Sek.`}
             </p>
           </div>
-          <button
-            type="button"
-            onClick={() => void loadProgress()}
-            disabled={loading}
-            className="mt-1 px-4 py-2 text-sm font-medium text-gold-500 border border-gold-500/30 rounded-lg hover:bg-gold-500/10 disabled:opacity-50 transition-colors"
-          >
-            {loading ? "Laden…" : "Aktualisieren"}
-          </button>
+          <div className="flex items-center gap-2 mt-1">
+            <button
+              type="button"
+              onClick={() => { setConfirmResetAll(true); setConfirmResetId(null); }}
+              disabled={loading || resettingAll || summaries.length === 0}
+              className="px-4 py-2 text-sm font-medium text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 disabled:opacity-50 transition-colors"
+            >
+              Alle zurücksetzen
+            </button>
+            <button
+              type="button"
+              onClick={() => void loadProgress()}
+              disabled={loading || resettingAll}
+              className="px-4 py-2 text-sm font-medium text-gold-500 border border-gold-500/30 rounded-lg hover:bg-gold-500/10 disabled:opacity-50 transition-colors"
+            >
+              {loading ? "Laden…" : "Aktualisieren"}
+            </button>
+          </div>
         </div>
 
         {/* ── Error ──────────────────────────────────────────────── */}
         {error && (
           <div className="rounded-lg bg-red-400/10 px-4 py-3 mb-6">
             <p className="text-sm text-red-400">{error}</p>
+          </div>
+        )}
+
+        {/* ── Global reset confirm ────────────────────────────────── */}
+        {confirmResetAll && (
+          <div className="rounded-xl bg-red-500/10 border border-red-500/30 px-5 py-4 mb-6">
+            <p className="text-sm font-semibold text-red-400 mb-1">
+              Wirklich alle {summaries.length} Schülerteams zurücksetzen?
+            </p>
+            <p className="text-xs text-stone-500 mb-4 leading-relaxed">
+              Alle Fortschritte, Antworten und Ergebnisse werden unwiderruflich gelöscht.
+              Jedes Team startet danach neu bei Station 1.
+              Admin-Konten werden nicht berührt.
+            </p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => void handleResetAll()}
+                disabled={resettingAll}
+                className="px-3 py-1.5 text-sm font-medium rounded-lg bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30 disabled:opacity-50 transition-colors"
+              >
+                {resettingAll ? "Wird zurückgesetzt…" : `Ja, alle ${summaries.length} Teams zurücksetzen`}
+              </button>
+              <button
+                type="button"
+                onClick={() => setConfirmResetAll(false)}
+                disabled={resettingAll}
+                className="px-3 py-1.5 text-sm text-stone-400 hover:text-stone-200 disabled:opacity-50 transition-colors"
+              >
+                Abbrechen
+              </button>
+            </div>
           </div>
         )}
 
@@ -416,8 +486,8 @@ export default function AdminPage() {
               {/* Data rows */}
               {summaries.map((s) => {
                 const isActive     = !s.finalSolved && s.startedAt > 0;
-                const isResetting  = resettingIds.has(s.teamId);
-                const isConfirming = confirmResetId === s.teamId;
+                const isResetting  = resettingIds.has(s.teamId) || resettingAll;
+                const isConfirming = confirmResetId === s.teamId && !resettingAll;
 
                 return (
                   <tr
