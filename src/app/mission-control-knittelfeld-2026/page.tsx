@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { Fragment, useState, useEffect, useCallback, useRef } from "react";
 import {
   fetchStations,
   fetchAllProgress,
   resetTeamProgress,
 } from "@/services/game.service";
 import { fetchAllTeams } from "@/services/auth.service";
-import type { Station, TeamProgress } from "@/types/game";
+import type { Station, StationStatus, TeamProgress } from "@/types/game";
 import type { AppUser } from "@/types/user";
 
 // ---------------------------------------------------------------------------
@@ -37,6 +37,9 @@ interface TeamSummary {
   photos: Record<string, string>; // stationId → Storage download URL (empty = no photos)
   answers: Record<string, string>;          // stationId → correct answer the student typed
   lastWrongAnswer: Record<string, string>;  // stationId → most recent wrong submission
+  // Per-station details — surfaced to the expand-row only.
+  progress: Record<string, StationStatus>;
+  wrongAnswers: Record<string, number>;
 }
 
 function buildSummaries(
@@ -81,6 +84,8 @@ function buildSummaries(
         photos:              prog?.photos ?? {},
         answers:             prog?.answers ?? {},
         lastWrongAnswer:     prog?.lastWrongAnswer ?? {},
+        progress:            prog?.progress ?? {},
+        wrongAnswers:        prog?.wrongAnswers ?? {},
       };
     })
     .sort((a, b) => {
@@ -229,6 +234,114 @@ function PhotoList({
   );
 }
 
+// Visual mapping for the per-station status badge inside TeamDetailRow.
+const DETAIL_STATUS: Record<StationStatus, { label: string; cls: string }> = {
+  active:    { label: "Aktiv",        cls: "bg-blue-500/15 text-blue-300 border-blue-500/30" },
+  completed: { label: "Abgeschlossen", cls: "bg-gold-500/15 text-gold-300 border-gold-500/30" },
+  locked:    { label: "Gesperrt",     cls: "bg-navy-700/50 text-stone-500 border-navy-600" },
+  skipped:   { label: "Übersprungen", cls: "bg-amber-500/15 text-amber-300 border-amber-500/30" },
+};
+
+/**
+ * Expanded detail row content for a single team — rendered only when the team
+ * is the one currently expanded. Lays out one card per station with the
+ * student's answer, last wrong attempt, error count, and (larger) photo.
+ *
+ * Pure presentation — no fetches, no state, no side effects.
+ */
+function TeamDetailRow({
+  team,
+  stations,
+}: {
+  team: TeamSummary;
+  stations: Station[];
+}) {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      {stations.map((st) => {
+        const status: StationStatus = team.progress[st.id] ?? "locked";
+        const meta = DETAIL_STATUS[status];
+        const correct = team.answers[st.id];
+        const wrong = team.lastWrongAnswer[st.id];
+        const errors = team.wrongAnswers[st.id] ?? 0;
+        const photoUrl = team.photos[st.id];
+
+        return (
+          <div
+            key={st.id}
+            className="bg-navy-900/60 border border-navy-700/60 rounded-lg p-3 flex flex-col gap-2"
+          >
+            {/* Header: order + title + status */}
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-xs text-stone-500 tabular-nums">
+                  Station {st.order}
+                </p>
+                <p className="text-sm font-medium text-cream truncate">
+                  {st.title}
+                </p>
+              </div>
+              <span
+                className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border whitespace-nowrap ${meta.cls}`}
+              >
+                {meta.label}
+              </span>
+            </div>
+
+            {/* Answers + errors */}
+            <div className="text-xs space-y-1">
+              {correct ? (
+                <p>
+                  <span className="text-stone-500">Antwort: </span>
+                  <span className="text-cream font-mono">{correct}</span>
+                </p>
+              ) : null}
+              {wrong && !correct ? (
+                <p>
+                  <span className="text-stone-500">letzte falsch: </span>
+                  <span className="text-red-400 font-mono">{wrong}</span>
+                </p>
+              ) : null}
+              {errors > 0 ? (
+                <p className="text-stone-500">
+                  {errors} Fehlversuch{errors === 1 ? "" : "e"}
+                </p>
+              ) : null}
+              {!correct && !wrong && errors === 0 ? (
+                <p className="text-stone-600 italic">— keine Eingaben</p>
+              ) : null}
+            </div>
+
+            {/* Larger photo if uploaded */}
+            {photoUrl ? (
+              <a
+                href={photoUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="block mt-1"
+                title="Foto in neuem Tab öffnen"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={photoUrl}
+                  alt={`Foto: ${st.title}`}
+                  loading="lazy"
+                  className="w-full h-32 object-cover rounded border border-navy-700 hover:border-gold-500/60 transition-colors"
+                />
+              </a>
+            ) : (
+              <p className="text-xs text-stone-600 italic mt-1">
+                — kein Foto hochgeladen
+              </p>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 /**
  * Compact per-station answer list. Shows the correct answer (cream font-mono)
  * when present; otherwise falls back to the latest wrong attempt (red, with
@@ -303,6 +416,10 @@ export default function MissionControlPage() {
   // Global reset state — two-step confirm + in-flight loading for "reset all".
   const [confirmResetAll, setConfirmResetAll] = useState(false);
   const [resettingAll,    setResettingAll]    = useState(false);
+
+  // teamId of the currently expanded detail row — null means no row is open.
+  // Independent of summaries state, so auto-refresh never closes the row.
+  const [expandedTeamId,  setExpandedTeamId]  = useState<string | null>(null);
 
   // ------------------------------------------------------------------
   // Data loading
@@ -577,13 +694,22 @@ export default function MissionControlPage() {
                 const isActive     = !s.finalSolved && s.startedAt > 0;
                 const isResetting  = resettingIds.has(s.teamId) || resettingAll;
                 const isConfirming = confirmResetId === s.teamId && !resettingAll;
+                const isExpanded   = expandedTeamId === s.teamId;
 
                 return (
+                  <Fragment key={s.teamId}>
                   <tr
-                    key={s.teamId}
+                    onClick={() =>
+                      setExpandedTeamId((prev) => (prev === s.teamId ? null : s.teamId))
+                    }
+                    aria-expanded={isExpanded}
                     className={[
-                      "border-b border-navy-700/50 last:border-0 transition-colors",
-                      isActive ? "bg-blue-500/[0.04]" : "",
+                      "border-b border-navy-700/50 transition-colors cursor-pointer hover:bg-navy-700/30",
+                      isExpanded
+                        ? "bg-navy-700/40"
+                        : isActive
+                          ? "bg-blue-500/[0.04]"
+                          : "",
                     ].join(" ")}
                   >
 
@@ -657,7 +783,12 @@ export default function MissionControlPage() {
                     </td>
 
                     {/* Fotos --------------------------------------- */}
-                    <td className="px-5 py-4 hidden md:table-cell">
+                    {/* stopPropagation: clicks on photo links / cell empty
+                        area must not trigger the row's expand toggle. */}
+                    <td
+                      className="px-5 py-4 hidden md:table-cell"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <PhotoList photos={s.photos} stations={stationsRef.current} />
                     </td>
 
@@ -671,7 +802,9 @@ export default function MissionControlPage() {
                     </td>
 
                     {/* Reset --------------------------------------- */}
-                    <td className="px-4 py-4">
+                    {/* stopPropagation: reset buttons + confirm UI are pure
+                        action territory; never bubble to the row's expand. */}
+                    <td className="px-4 py-4" onClick={(e) => e.stopPropagation()}>
                       {isConfirming ? (
                         <div className="flex flex-col items-end gap-1">
                           <p className="text-xs text-stone-300 whitespace-nowrap">
@@ -708,6 +841,21 @@ export default function MissionControlPage() {
                     </td>
 
                   </tr>
+
+                  {/* Detail row — only rendered when this team is expanded.
+                      Sits inside the same <tbody> so colSpan aligns with the
+                      9 columns of the parent table. */}
+                  {isExpanded && (
+                    <tr className="bg-navy-900/40 border-b border-navy-700/50">
+                      <td colSpan={9} className="px-5 py-5">
+                        <TeamDetailRow
+                          team={s}
+                          stations={stationsRef.current}
+                        />
+                      </td>
+                    </tr>
+                  )}
+                  </Fragment>
                 );
               })}
 
