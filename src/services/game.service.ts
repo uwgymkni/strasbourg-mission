@@ -11,6 +11,7 @@ import {
 import { getDb, COLLECTIONS } from "@/lib/firebase";
 import { ok, err, type ServiceResult } from "@/lib/result";
 import type { Station, StationStatus, TeamProgress, ChallengeType } from "@/types/game";
+import { TEAM_CONFIGS } from "@/constants/routes";
 
 // ---------------------------------------------------------------------------
 // Normalization helpers
@@ -297,7 +298,16 @@ export async function resetTeamProgress(
       return err(new Error("Keine Stationen gefunden — Reset abgebrochen."));
     }
 
-    // 2. Preserve team members — read existing doc before overwriting.
+    // 2. Rotate station IDs by the team's original routeOffset — same logic as
+    //    the seed script — so each team lands back on its designated start station.
+    const teamConfig = TEAM_CONFIGS.find((t) => t.teamCode === teamId);
+    const offset = teamConfig?.routeOffset ?? 0;
+    const rotated = [
+      ...stationIds.slice(offset),
+      ...stationIds.slice(0, offset),
+    ];
+
+    // 3. Preserve team members — read existing doc before overwriting.
     const existingSnap = await getDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId));
     const existingData = existingSnap.exists()
       ? (existingSnap.data() as Record<string, unknown>)
@@ -308,9 +318,9 @@ export async function resetTeamProgress(
         )
       : [];
 
-    // 3. Build progress map: first station active, rest locked.
+    // 4. Build progress map: first in rotated order → active, rest → locked.
     const progress: Record<string, string> = {};
-    stationIds.forEach((id, idx) => {
+    rotated.forEach((id, idx) => {
       progress[id] = idx === 0 ? "active" : "locked";
     });
 
@@ -320,7 +330,7 @@ export async function resetTeamProgress(
       {
         teamId,
         progress,
-        currentStationId: stationIds[0],
+        currentStationId: rotated[0],
         startedAt: 0,        // 0 = not yet started (distinct from Date.now())
         finishedAt: null,
         finalAnswer: null,
