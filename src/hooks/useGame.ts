@@ -20,7 +20,26 @@ import {
   resetTeamProgress,
 } from "@/services/game.service";
 import { ok, type ServiceResult } from "@/lib/result";
-import type { TeamProgress } from "@/types/game";
+import type { Station, TeamProgress } from "@/types/game";
+
+/**
+ * Returns the ID of the station that immediately follows the given one (by order),
+ * or null if no such station exists (i.e. the given station is the last one).
+ *
+ * Single source of truth for "what comes next" — used by both completeCurrentStation
+ * and skipCurrentStation so the value is computed once and passed both to the Firestore
+ * write (service layer) and the in-memory store update, ensuring they always agree.
+ */
+function findNextStationId(
+  stations: Station[],
+  currentStationId: string | null
+): string | null {
+  if (!currentStationId) return null;
+  const current = stations.find((s) => s.id === currentStationId);
+  if (!current) return null;
+  const next = stations.find((s) => s.order === current.order + 1);
+  return next?.id ?? null;
+}
 
 export function useGame() {
   const [loading, setLoading] = useState(false);
@@ -137,7 +156,18 @@ export function useGame() {
     setLoading(true);
     setError(null);
 
-    const result = await persistStationCompletion(teamIdRef.current, currentId);
+    // Compute once — reused for the Firestore write and the store update so both
+    // always activate the exact same next station without duplicating the lookup.
+    const nextStationId = findNextStationId(
+      useGameStore.getState().stations,
+      currentId
+    );
+
+    const result = await persistStationCompletion(
+      teamIdRef.current,
+      currentId,
+      nextStationId
+    );
 
     if (!result.success) {
       setError(result.error);
@@ -146,9 +176,9 @@ export function useGame() {
       return result;
     }
 
-    // Firebase confirmed — now update the store.
+    // Firebase confirmed — now mirror the same state in the store.
     completeStationInStore(currentId);
-    unlockNextInStore();
+    unlockNextInStore(nextStationId);
 
     setLoading(false);
     submittingRef.current = false;
@@ -198,8 +228,19 @@ export function useGame() {
     setLoading(true);
     setError(null);
 
+    // Compute once — same value goes to both the Firestore write and the store update.
+    const nextStationId = findNextStationId(
+      useGameStore.getState().stations,
+      currentId
+    );
     const wrongCount = useGameStore.getState().wrongAnswers[currentId] ?? 0;
-    const result = await persistStationSkip(teamIdRef.current, currentId, wrongCount);
+
+    const result = await persistStationSkip(
+      teamIdRef.current,
+      currentId,
+      wrongCount,
+      nextStationId
+    );
 
     if (!result.success) {
       setError(result.error);
@@ -208,9 +249,9 @@ export function useGame() {
       return result;
     }
 
-    // Firebase confirmed — now update the store.
+    // Firebase confirmed — now mirror the same state in the store.
     skipStationInStore(currentId);
-    unlockNextInStore();
+    unlockNextInStore(nextStationId);
 
     setLoading(false);
     submittingRef.current = false;

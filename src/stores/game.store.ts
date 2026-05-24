@@ -15,7 +15,7 @@ interface GameActions {
   setStations: (stations: Station[]) => void;
   setProgress: (progress: Record<string, StationStatus>) => void;
   completeStation: (stationId: string) => void;
-  unlockNextStation: () => void;
+  unlockNextStation: (nextStationId: string | null) => void;
   skipStation: (stationId: string) => void;
   incrementWrongAnswer: (stationId: string) => void;
   resetGame: () => void;
@@ -44,21 +44,16 @@ export const useGameStore = create<GameState & GameActions>()(
           progress: { ...state.progress, [stationId]: "completed" },
         })),
 
-      // Activates the station that follows the current one by order.
-      // No-op if there is no current station or no next station.
-      unlockNextStation: () => {
-        const { stations, progress, currentStationId } = get();
-
-        const current = stations.find((s) => s.id === currentStationId);
-        if (!current) return;
-
-        const next = stations.find((s) => s.order === current.order + 1);
-        if (!next) return;
-
-        set({
-          progress: { ...progress, [next.id]: "active" },
-          currentStationId: next.id,
-        });
+      // Activates the station identified by nextStationId.
+      // No-op if nextStationId is null (last station completed or skipped).
+      // The hook is responsible for computing nextStationId before calling this,
+      // so the same value can be passed to the service layer without duplication.
+      unlockNextStation: (nextStationId) => {
+        if (!nextStationId) return;
+        set((state) => ({
+          progress: { ...state.progress, [nextStationId]: "active" },
+          currentStationId: nextStationId,
+        }));
       },
 
       // Marks a station as skipped. Does NOT unlock the next one.

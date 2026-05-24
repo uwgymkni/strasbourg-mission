@@ -143,18 +143,29 @@ export async function fetchTeamProgress(
 }
 
 /**
- * Marks a single station as completed in Firestore.
- * Uses dot notation to update only that station's status — avoids overwriting other fields.
- * Assumes the progress document already exists (created when the game starts).
+ * Marks a single station as completed in Firestore and activates the next one.
+ *
+ * Writing nextStationId + currentStationId in the same updateDoc ensures that
+ * loadGame() on the dashboard always reads the fully-updated state from Firestore,
+ * not a stale snapshot that is missing the next station's "active" status.
+ *
+ * nextStationId is null only for the last station — in that case only the
+ * completion status is written (no next station to unlock).
  */
 export async function persistStationCompletion(
   teamId: string,
-  stationId: string
+  stationId: string,
+  nextStationId: string | null
 ): Promise<ServiceResult<void>> {
   try {
-    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+    const update: Record<string, unknown> = {
       [`progress.${stationId}`]: "completed" satisfies StationStatus,
-    });
+    };
+    if (nextStationId) {
+      update[`progress.${nextStationId}`] = "active" satisfies StationStatus;
+      update.currentStationId = nextStationId;
+    }
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), update);
     return ok(undefined);
   } catch (error) {
     return err(error);
@@ -162,20 +173,33 @@ export async function persistStationCompletion(
 }
 
 /**
- * Marks a single station as skipped in Firestore and records the wrong-answer count.
- * Uses dot notation to avoid overwriting unrelated fields.
+ * Marks a single station as skipped in Firestore, records the wrong-answer count,
+ * and activates the next station — all in a single atomic updateDoc call.
+ *
+ * Writing nextStationId + currentStationId in the same update ensures that
+ * loadGame() on the dashboard always reads the fully-updated state from Firestore,
+ * not a stale snapshot missing the next station's "active" status.
+ *
+ * nextStationId is null only for the last station — in that case only the
+ * skip status and wrong-answer count are written (no next station to unlock).
  * Idempotent — safe to retry after a network error.
  */
 export async function persistStationSkip(
   teamId: string,
   stationId: string,
-  wrongCount: number
+  wrongCount: number,
+  nextStationId: string | null
 ): Promise<ServiceResult<void>> {
   try {
-    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+    const update: Record<string, unknown> = {
       [`progress.${stationId}`]: "skipped" satisfies StationStatus,
       [`wrongAnswers.${stationId}`]: wrongCount,
-    });
+    };
+    if (nextStationId) {
+      update[`progress.${nextStationId}`] = "active" satisfies StationStatus;
+      update.currentStationId = nextStationId;
+    }
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), update);
     return ok(undefined);
   } catch (error) {
     return err(error);
