@@ -22,10 +22,10 @@ export default function LoginPage() {
       setTeamsLoading(true);
       const result = await fetchAllTeams();
       if (result.success) {
-        // Sort alphabetically by teamName
-        const sorted = [...result.data].sort((a, b) =>
-          a.teamName.localeCompare(b.teamName, "de")
-        );
+        // Sort alphabetically by teamName; exclude any residual admin-role docs
+        const sorted = [...result.data]
+          .filter((t) => t.role === "student")
+          .sort((a, b) => a.teamName.localeCompare(b.teamName, "de"));
         setTeams(sorted);
       } else {
         setTeamsError("Teams konnten nicht geladen werden. Verbindung prüfen.");

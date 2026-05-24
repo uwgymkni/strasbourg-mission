@@ -6,23 +6,33 @@ import { useAuthStore, selectUser } from "@/stores/auth.store";
 import type { AppUser } from "@/types/user";
 
 /**
- * Redirects to /login if no authenticated user is found on mount.
- * Returns the user immediately — Zustand persist rehydrates from localStorage
- * synchronously, so authenticated users see their data on the first render.
+ * Guards game pages to logged-in users only.
+ *
+ * Redirect rules (evaluated once on mount — store is already rehydrated):
+ *   - No user  → /login
+ *   - Has user → returns the user, page renders normally
  *
  * Pages should return null when this returns null to avoid rendering
- * protected content during the redirect.
+ * protected content during the in-flight redirect.
  */
 export function useRequireAuth(): AppUser | null {
   const router = useRouter();
-  const user = useAuthStore(selectUser);
+
+  // Subscribe for reactivity (re-render on logout).
+  // Value intentionally ignored — we read via getState() below to bypass
+  // the useSyncExternalStore snapshot-timing issue that can return null on
+  // the first render of a new route segment even after localStorage rehydration.
+  useAuthStore(selectUser);
 
   useEffect(() => {
-    if (!user) {
+    const u = useAuthStore.getState().user;
+    if (!u) {
       router.replace("/login");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // once on mount — user is already rehydrated from localStorage by this point
+  }, []); // once on mount — store is already rehydrated at this point
 
-  return user;
+  const u = useAuthStore.getState().user;
+  if (!u) return null;
+  return u;
 }

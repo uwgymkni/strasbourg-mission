@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { useAuthStore, selectUser } from "@/stores/auth.store";
+import { useAuthStore } from "@/stores/auth.store";
 import { Button } from "@/components/ui/Button";
 import { SchoolLogo } from "@/components/layout/SchoolLogo";
 
@@ -16,15 +16,18 @@ const MISSION_RULES = [
 
 export default function LandingPage() {
   const router = useRouter();
-  const user = useAuthStore(selectUser);
 
-  // Students who reopen the app with an active session skip the landing page.
+  // Users who reopen the app with an active session skip the landing page.
+  // Admins go directly to Mission Control; students go to their dashboard.
+  // getState() is used (not the hook) to avoid the useSyncExternalStore
+  // snapshot-timing issue that can return null on first render after a hard reload.
   useEffect(() => {
+    const user = useAuthStore.getState().user;
     if (user) {
       router.replace("/dashboard");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // once on mount — redirects before the user can interact
+  }, []); // once on mount — store is already rehydrated at this point
 
   return (
     <div className="min-h-dvh flex flex-col bg-navy-950 px-6 pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)]">

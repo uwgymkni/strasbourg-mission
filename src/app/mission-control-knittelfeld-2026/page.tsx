@@ -7,7 +7,6 @@ import {
   resetTeamProgress,
 } from "@/services/game.service";
 import { fetchAllTeams } from "@/services/auth.service";
-import { useRequireAdmin } from "@/hooks/useRequireAdmin";
 import type { Station, TeamProgress } from "@/types/game";
 import type { AppUser } from "@/types/user";
 
@@ -45,9 +44,8 @@ function buildSummaries(
   const stationMap = new Map(stations.map((s) => [s.id, s]));
   const total = stations.length;
 
-  // Admin accounts are excluded from Mission Control — they are not student teams.
-  // fetchAllTeams() returns all roles; we filter here so the stats bar and table
-  // only reflect actual student teams without touching any other code path.
+  // Exclude any residual admin-role docs (e.g. PROF-0) that may still exist
+  // in Firestore from the old architecture. All new teams are role==="student".
   return teams
     .filter((t) => t.role === "student")
     .map((team) => {
@@ -182,12 +180,10 @@ function StatusCell({ s }: { s: TeamSummary }) {
 }
 
 // ---------------------------------------------------------------------------
-// Page
+// Page — no auth guard needed; access is controlled by the secret URL only
 // ---------------------------------------------------------------------------
 
-export default function AdminPage() {
-  const adminUser = useRequireAdmin();
-
+export default function MissionControlPage() {
   // Stations are loaded once — never polled. Stored in a ref so loadProgress
   // (called from a setInterval) always reads the latest value without a stale
   // closure and without needing stations in its useCallback dependency array.
@@ -271,7 +267,7 @@ export default function AdminPage() {
   }, []);
 
   // ------------------------------------------------------------------
-  // Reset action
+  // Reset actions
   // ------------------------------------------------------------------
 
   async function handleReset(teamId: string): Promise<void> {
@@ -287,7 +283,7 @@ export default function AdminPage() {
     setConfirmResetId(null);
 
     if (result.success) {
-      void loadProgress(true); // silent: update table without full spinner
+      void loadProgress(true);
     } else {
       setError(result.error);
     }
@@ -295,8 +291,7 @@ export default function AdminPage() {
 
   /**
    * Resets every student team in parallel.
-   * Safe by construction: summaries only ever contains role === "student" teams
-   * (buildSummaries() filters them), so admin accounts cannot reach this path.
+   * Safe by construction: summaries only ever contains role === "student" teams.
    */
   async function handleResetAll(): Promise<void> {
     setResettingAll(true);
@@ -316,12 +311,6 @@ export default function AdminPage() {
 
     void loadProgress(true);
   }
-
-  // ------------------------------------------------------------------
-  // Guard
-  // ------------------------------------------------------------------
-
-  if (!adminUser) return null;
 
   // ------------------------------------------------------------------
   // Derived counts (for stats bar)
@@ -347,9 +336,9 @@ export default function AdminPage() {
         <div className="flex items-start justify-between mb-8">
           <div>
             <p className="text-gold-600 text-xs font-medium tracking-widest uppercase mb-2">
-              Admin
+              Mission Control
             </p>
-            <h1 className="text-2xl font-semibold text-cream">Mission Control</h1>
+            <h1 className="text-2xl font-semibold text-cream">Strasbourg Mission</h1>
             <p className="text-stone-500 text-xs mt-1 h-4">
               {secondsAgo === null
                 ? ""
@@ -394,7 +383,6 @@ export default function AdminPage() {
             <p className="text-xs text-stone-500 mb-4 leading-relaxed">
               Alle Fortschritte, Antworten und Ergebnisse werden unwiderruflich gelöscht.
               Jedes Team startet danach neu bei Station 1.
-              Admin-Konten werden nicht berührt.
             </p>
             <div className="flex gap-2">
               <button
