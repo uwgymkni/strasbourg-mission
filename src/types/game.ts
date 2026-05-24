@@ -14,6 +14,10 @@ export interface Station {
   knowledgeText: string;
   rewardLetter: string; // single letter; all 6 letters spell the final answer
   rewardNumber: number; // 1-based position of this letter in the final answer
+  // Navigation — optional so old Firestore docs without these fields still normalise cleanly
+  latitude?: number;
+  longitude?: number;
+  mapsUrl?: string; // pre-built Google Maps deep-link: opens app on mobile, browser on desktop
 }
 
 // Firestore document shape — used by services layer

@@ -1,5 +1,15 @@
 import type { Station } from "@/types/game";
 
+// ---------------------------------------------------------------------------
+// Helper — builds a Google Maps deep-link from coordinates.
+// On iOS/Android this opens the native Maps app; on desktop it opens the browser.
+// We use the /search/ endpoint with an explicit query parameter so the pin lands
+// at the exact location rather than returning a list of nearby results.
+// ---------------------------------------------------------------------------
+function mapsLink(lat: number, lng: number): string {
+  return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
+}
+
 // 6 stations in Strasbourg; reward letters spell A-L-S-A-C-E in rewardNumber order.
 export const STATIONS: Station[] = [
   {
@@ -18,6 +28,9 @@ export const STATIONS: Station[] = [
       "Johannes Gutenberg hielt sich zwischen 1434 und 1444 in Straßburg auf, wo er erste Druckexperimente durchführte, bevor er die Druckerpresse mit beweglichen Lettern in Mainz erfand. Die 1840 eingeweihte Bronzestatue zeigt ihn, wie er die erste gedruckte Seite der Geschichte in den Händen hält.",
     rewardLetter: "A",
     rewardNumber: 1,
+    latitude: 48.5818,
+    longitude: 7.7487,
+    mapsUrl: mapsLink(48.5818, 7.7487),
   },
   {
     id: "station-2",
@@ -35,6 +48,9 @@ export const STATIONS: Station[] = [
       "Jean-Baptiste Kléber (1753–1800) ist der bekannteste General aus Straßburg. Als gebürtiger Straßburger befehligte er die Armeen der Französischen Republik und wurde in Kairo ermordet. Seine Asche ruht seit 1838 unter der Bodenplatte seiner eigenen Statue — er ist buchstäblich auf dem Hauptplatz seiner Heimatstadt begraben.",
     rewardLetter: "L",
     rewardNumber: 2,
+    latitude: 48.5840,
+    longitude: 7.7471,
+    mapsUrl: mapsLink(48.5840, 7.7471),
   },
   {
     id: "station-3",
@@ -61,6 +77,9 @@ export const STATIONS: Station[] = [
       "Das Viertel 'Petite France' verdankt seinen Namen paradoxerweise einem Behandlungshaus für erkrankte Soldaten im 16. Jahrhundert. Die Fachwerkhäuser entlang der Kanäle wurden früher von Gerbern und Müllern bewohnt, die die Strömung der Ill für ihre Mühlen nutzten.",
     rewardLetter: "S",
     rewardNumber: 3,
+    latitude: 48.5793,
+    longitude: 7.7398,
+    mapsUrl: mapsLink(48.5793, 7.7398),
   },
   {
     id: "station-4",
@@ -78,6 +97,9 @@ export const STATIONS: Station[] = [
       "Die im 13. Jahrhundert erbauten Ponts Couverts bildeten die erste Verteidigungslinie Straßburgs. Ursprünglich waren sie mit einem Holzdach bedeckt — dieses verschwand nach der Französischen Revolution, weshalb ihr Name heute paradox klingt. Es gab ursprünglich vier Türme; der vierte wurde im 19. Jahrhundert abgerissen. Jeder Turm trägt den Namen einer alten Straßburger Zunft.",
     rewardLetter: "A",
     rewardNumber: 4,
+    latitude: 48.5784,
+    longitude: 7.7376,
+    mapsUrl: mapsLink(48.5784, 7.7376),
   },
   {
     id: "station-5",
@@ -101,6 +123,9 @@ export const STATIONS: Station[] = [
       "Der Barrage Vauban wurde zwischen 1686 und 1690 im Auftrag von Ludwig XIV. gebaut. Im Falle eines feindlichen Angriffs konnten die Schleusen angehoben werden, um die südlichen Vororte zu überfluten und den Truppenvormarsch zu bremsen. Das Gebäude beherbergt heute eine Galerie mit mittelalterlichen Skulpturen aus dem Straßburger Münster.",
     rewardLetter: "C",
     rewardNumber: 5,
+    latitude: 48.5781,
+    longitude: 7.7361,
+    mapsUrl: mapsLink(48.5781, 7.7361),
   },
   {
     id: "station-6",
@@ -118,5 +143,8 @@ export const STATIONS: Station[] = [
       "Das Haus Kammerzell gilt als eines der schönsten mittelalterlichen Häuser im Elsass. Es wurde in zwei Phasen erbaut — Erdgeschoss aus rosa Sandstein im Jahr 1467, Holzetagen mit Schnitzereien im Jahr 1589. Es verdankt seinen Namen einem elsässischen Käsehändler des 18. Jahrhunderts. Die 36 Schnitzereien stellen die fünf Sinne, die sieben damals bekannten Planeten und Helden der Antike dar.",
     rewardLetter: "E",
     rewardNumber: 6,
+    latitude: 48.5818,
+    longitude: 7.7511,
+    mapsUrl: mapsLink(48.5818, 7.7511),
   },
 ];

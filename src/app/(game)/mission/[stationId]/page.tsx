@@ -185,6 +185,16 @@ export default function MissionPage() {
               <p className="text-stone-400 text-sm leading-relaxed">
                 {nextStation.locationHint}
               </p>
+              {nextStation.mapsUrl && (
+                <a
+                  href={nextStation.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-gold-500 hover:text-gold-400 transition-colors duration-150"
+                >
+                  📍 Navigation öffnen
+                </a>
+              )}
             </Card>
           )}
 
@@ -232,6 +242,16 @@ export default function MissionPage() {
               <p className="text-stone-400 text-sm leading-relaxed">
                 {nextStation.locationHint}
               </p>
+              {nextStation.mapsUrl && (
+                <a
+                  href={nextStation.mapsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-gold-500 hover:text-gold-400 transition-colors duration-150"
+                >
+                  📍 Navigation öffnen
+                </a>
+              )}
             </Card>
           )}
 
@@ -381,6 +401,16 @@ export default function MissionPage() {
             Euer Standort
           </p>
           <p className="text-cream leading-relaxed">{station.locationHint}</p>
+          {station.mapsUrl && (
+            <a
+              href={station.mapsUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-gold-500 hover:text-gold-400 transition-colors duration-150"
+            >
+              📍 Navigation öffnen
+            </a>
+          )}
         </Card>
 
         <Card padding="md">

@@ -50,6 +50,10 @@ function normalizeStation(id: string, data: Record<string, unknown>): Station {
     knowledgeText: typeof data.knowledgeText === "string" ? data.knowledgeText : "",
     rewardLetter: typeof data.rewardLetter === "string" ? data.rewardLetter : "",
     rewardNumber: typeof data.rewardNumber === "number" ? data.rewardNumber : 0,
+    // Navigation (optional — omit entirely when absent so the field stays undefined)
+    ...(typeof data.latitude === "number" && { latitude: data.latitude }),
+    ...(typeof data.longitude === "number" && { longitude: data.longitude }),
+    ...(typeof data.mapsUrl === "string" && data.mapsUrl && { mapsUrl: data.mapsUrl }),
   };
 }
 
@@ -88,6 +92,9 @@ function normalizeTeamProgress(
               .map(([k, v]) => [k, v as number])
           )
         : {},
+    members: Array.isArray(data.members)
+      ? (data.members as unknown[]).filter((m): m is string => typeof m === "string")
+      : undefined,
   };
 }
 
