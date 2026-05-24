@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { StationStatus } from "@/types/game";
+import { haversineMeters, walkingMinutes, formatDistance } from "@/lib/geo";
 
 // Wrong answers before the skip button becomes available
 const SKIP_THRESHOLD = 2;
@@ -63,6 +64,19 @@ export default function MissionPage() {
   const nextStation = station
     ? stations.find((s) => s.order === station.order + 1)
     : undefined;
+
+  // Walking distance hint between current and next station — only when both
+  // have coordinates. Pure math, no API. Computed once per render.
+  const nextLegMeters =
+    station?.latitude != null &&
+    station?.longitude != null &&
+    nextStation?.latitude != null &&
+    nextStation?.longitude != null
+      ? haversineMeters(
+          { latitude: station.latitude, longitude: station.longitude },
+          { latitude: nextStation.latitude, longitude: nextStation.longitude }
+        )
+      : null;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -185,6 +199,11 @@ export default function MissionPage() {
               <p className="text-stone-400 text-sm leading-relaxed">
                 {nextStation.locationHint}
               </p>
+              {nextLegMeters !== null && (
+                <p className="text-xs text-stone-500 mt-2">
+                  📐 ca. {formatDistance(nextLegMeters)} · ~{walkingMinutes(nextLegMeters)} min Fußweg
+                </p>
+              )}
               {nextStation.mapsUrl && (
                 <a
                   href={nextStation.mapsUrl}
@@ -242,6 +261,11 @@ export default function MissionPage() {
               <p className="text-stone-400 text-sm leading-relaxed">
                 {nextStation.locationHint}
               </p>
+              {nextLegMeters !== null && (
+                <p className="text-xs text-stone-500 mt-2">
+                  📐 ca. {formatDistance(nextLegMeters)} · ~{walkingMinutes(nextLegMeters)} min Fußweg
+                </p>
+              )}
               {nextStation.mapsUrl && (
                 <a
                   href={nextStation.mapsUrl}
@@ -406,9 +430,18 @@ export default function MissionPage() {
               href={station.mapsUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 mt-3 text-xs font-medium text-gold-500 hover:text-gold-400 transition-colors duration-150"
+              className="
+                mt-4 flex items-center justify-center gap-2
+                w-full px-4 py-2.5 rounded-xl
+                text-sm font-medium text-gold-400
+                bg-gold-500/10 border border-gold-500/40
+                hover:bg-gold-500/15 active:bg-gold-500/20
+                transition-colors duration-150
+                focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500
+              "
             >
-              📍 Navigation öffnen
+              <span aria-hidden="true">📍</span>
+              Navigation öffnen
             </a>
           )}
         </Card>
