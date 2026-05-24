@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { fetchStations, fetchAllProgress } from "@/services/game.service";
 import { fetchAllTeams } from "@/services/auth.service";
+import { useRequireAdmin } from "@/hooks/useRequireAdmin";
 import type { Station, TeamProgress } from "@/types/game";
 import type { AppUser } from "@/types/user";
 
@@ -72,6 +73,8 @@ function formatTime(ms: number | undefined): string {
 // ---------------------------------------------------------------------------
 
 export default function AdminPage() {
+  const adminUser = useRequireAdmin();
+
   const [summaries, setSummaries] = useState<TeamSummary[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -103,6 +106,10 @@ export default function AdminPage() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  // Guard: hook redirects non-admins, but we also bail here to avoid
+  // rendering protected content during the in-flight redirect.
+  if (!adminUser) return null;
 
   const finishedCount = summaries.filter((s) => s.finalSolved).length;
   const activeCount = summaries.filter(
