@@ -52,3 +52,89 @@ export function formatDistance(meters: number): string {
   const km = (meters / 1000).toFixed(1).replace(".", ",");
   return `${km} km`;
 }
+
+// ---------------------------------------------------------------------------
+// SVG projection helpers — used by the Mission Control Operations Map.
+// ---------------------------------------------------------------------------
+
+/** Latitude/longitude rectangle used as the projection domain. */
+export interface LatLngBounds {
+  minLat: number;
+  maxLat: number;
+  minLng: number;
+  maxLng: number;
+}
+
+/**
+ * Maps a (lat, lng) coordinate into SVG pixel space.
+ *
+ * The Y-axis is inverted because SVG-Y grows downward while latitude grows
+ * northward. The `padding` parameter reserves a margin inside the SVG so
+ * markers at the extremes of the bounding box aren't clipped against the edge.
+ *
+ * No Mercator projection correction: at the scale of inner-city Strasbourg
+ * (roughly 1.1 km × 0.65 km at 48.6°N) linear normalisation is accurate to
+ * within a couple of metres — well below marker size.
+ */
+export function latLngToSvg(
+  lat: number,
+  lng: number,
+  bounds: LatLngBounds,
+  svgWidth: number,
+  svgHeight: number,
+  padding: number,
+): { x: number; y: number } {
+  const usableW = svgWidth  - 2 * padding;
+  const usableH = svgHeight - 2 * padding;
+
+  const x =
+    ((lng - bounds.minLng) / (bounds.maxLng - bounds.minLng)) * usableW +
+    padding;
+
+  // Invert: maxLat sits at the top of the SVG, minLat at the bottom.
+  const y =
+    (1 - (lat - bounds.minLat) / (bounds.maxLat - bounds.minLat)) * usableH +
+    padding;
+
+  return { x, y };
+}
+
+/**
+ * Deterministic jitter offset for a team-marker that shares its station with
+ * other teams. `position` is the team's 0-based index inside the cluster.
+ *
+ *   total = 1 → no offset (marker sits on the station centre)
+ *   total = 2 → split left / right
+ *   total = 3 → upward triangle
+ *   total ≥ 4 → even circle distribution starting at 12 o'clock
+ *
+ * Pure function — same inputs always return the same offset, so placement
+ * stays stable across re-renders and polling cycles.
+ */
+export function clusterOffset(
+  position: number,
+  total: number,
+): { dx: number; dy: number } {
+  if (total <= 1) return { dx: 0, dy: 0 };
+
+  if (total === 2) {
+    return position === 0 ? { dx: -22, dy: 0 } : { dx: 22, dy: 0 };
+  }
+
+  if (total === 3) {
+    const positions = [
+      { dx:   0, dy: -24 },
+      { dx: -22, dy:  12 },
+      { dx:  22, dy:  12 },
+    ];
+    return positions[position] ?? { dx: 0, dy: 0 };
+  }
+
+  // 4+ teams → spread evenly on a circle, starting at 12 o'clock.
+  const radius = 28;
+  const angle  = (2 * Math.PI * position) / total - Math.PI / 2;
+  return {
+    dx: Math.cos(angle) * radius,
+    dy: Math.sin(angle) * radius,
+  };
+}

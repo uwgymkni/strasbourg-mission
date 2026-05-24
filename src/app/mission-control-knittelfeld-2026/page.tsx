@@ -9,6 +9,7 @@ import {
   type ArchiveSnapshot,
 } from "@/services/game.service";
 import { fetchAllTeams } from "@/services/auth.service";
+import { MissionMap } from "@/components/MissionMap";
 import type { Station, StationStatus, TeamProgress } from "@/types/game";
 import type { AppUser } from "@/types/user";
 
@@ -43,6 +44,7 @@ interface TeamSummary {
   completedCount: number;
   skippedCount: number;
   totalStations: number;
+  currentStationId: string | null;  // needed by MissionMap to look up coordinates
   currentStationTitle: string | null;
   finalSolved: boolean;
   finalAnswer: string | null;
@@ -89,6 +91,7 @@ function buildSummaries(
         completedCount,
         skippedCount,
         totalStations:       total,
+        currentStationId:    prog?.currentStationId ?? null,
         currentStationTitle: currentStation?.title ?? null,
         finalSolved:
           typeof prog?.finalAnswer === "string" && prog.finalAnswer.length > 0,
@@ -144,6 +147,30 @@ function relativeTime(s: TeamSummary): string {
     return `vor ${agoMin} min`;
   }
   return "—";
+}
+
+// ---------------------------------------------------------------------------
+// CSV export helper
+// ---------------------------------------------------------------------------
+
+/**
+ * Escapes a single CSV cell value per RFC 4180:
+ * wraps in double-quotes whenever the value contains a comma, double-quote,
+ * carriage return, or newline; internal double-quotes are doubled.
+ * Null/undefined become empty string.
+ */
+function escapeCsv(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "";
+  const str = String(value);
+  if (
+    str.includes('"') ||
+    str.includes(",") ||
+    str.includes("\n") ||
+    str.includes("\r")
+  ) {
+    return `"${str.replace(/"/g, '""')}"`;
+  }
+  return str;
 }
 
 // ---------------------------------------------------------------------------
@@ -741,6 +768,286 @@ export default function MissionControlPage() {
   }
 
   // ------------------------------------------------------------------
+  // CSV export
+  // ------------------------------------------------------------------
+
+  /**
+   * Builds and immediately downloads a UTF-8 BOM CSV of the current summaries.
+   * Uses the Blob + URL.createObjectURL pattern — no server round-trip, 0 new
+   * Firestore reads. UTF-8 BOM (﻿) ensures Excel opens German umlauts
+   * without a manual import wizard.
+   *
+   * Per-station columns (answer + error-count) are appended at the end so
+   * the fixed columns are always in the same position regardless of station
+   * count changes.
+   */
+  function handleExportCSV(): void {
+    const stations = stationsRef.current;
+    const date = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+
+    // Station-specific headers: one pair per station, sorted by station.order
+    // (stationsRef is already order-sorted — verified in fetchStations).
+    const stationHeaders = stations.flatMap((st) => [
+      `Station ${st.order} Antwort`,
+      `Station ${st.order} Fehler`,
+    ]);
+
+    const headers = [
+      "Team",
+      "Name",
+      "Mitglieder",
+      "Status",
+      "Abgeschlossen",
+      "Übersprungen",
+      "Fehler gesamt",
+      "Zeit (min)",
+      "Endantwort",
+      "Fotos",
+      ...stationHeaders,
+    ];
+
+    const rows = summaries.map((s) => {
+      const status = s.finalSolved
+        ? "Fertig"
+        : s.startedAt > 0
+          ? "Aktiv"
+          : "Nicht gestartet";
+
+      const timeMin =
+        s.finalSolved && s.finishedAt && s.startedAt > 0
+          ? String(Math.round((s.finishedAt - s.startedAt) / 60_000))
+          : "";
+
+      const stationCells = stations.flatMap((st) => [
+        s.answers[st.id] ?? "",
+        String(s.wrongAnswers[st.id] ?? 0),
+      ]);
+
+      return [
+        s.teamId,
+        s.teamName,
+        s.members.join("; "), // semicolon-separated so it stays in one cell
+        status,
+        String(s.completedCount),
+        String(s.skippedCount),
+        String(s.totalWrongAnswers),
+        timeMin,
+        s.finalAnswer ?? "",
+        String(Object.keys(s.photos).length),
+        ...stationCells,
+      ];
+    });
+
+    const csvContent =
+      "﻿" + // UTF-8 BOM — Excel needs this to decode German umlauts correctly
+      [headers, ...rows]
+        .map((row) => row.map(escapeCsv).join(","))
+        .join("\r\n");
+
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `strasbourg-mission-${date}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ------------------------------------------------------------------
+  // Markdown content dump
+  // ------------------------------------------------------------------
+
+  /**
+   * Generates a human-readable Markdown file containing ALL station content —
+   * questions, accepted answers, hints, knowledge texts, photo challenges, and
+   * reward letters — intended for didactic review and content iteration.
+   *
+   * Reads exclusively from stationsRef.current (already populated at mount,
+   * same Firestore data the students see). Zero new Firestore reads.
+   * Same Blob + URL.createObjectURL pattern as handleExportCSV.
+   */
+  function handleExportMarkdown(): void {
+    const stations = stationsRef.current;
+    if (stations.length === 0) return; // guard: stations not yet loaded
+
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const timestamp = now.toLocaleString("de-DE", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+    const lines: string[] = [
+      "# Strasbourg Mission — Content Dump",
+      "",
+      `> Exportiert am ${timestamp}`,
+      "",
+      "---",
+      "",
+    ];
+
+    // ── Lösungswort-Übersicht ───────────────────────────────────────
+    const sorted = [...stations].sort((a, b) => a.rewardNumber - b.rewardNumber);
+    const finalWord = sorted.map((st) => st.rewardLetter).join("");
+
+    lines.push("## Lösungswort-Übersicht");
+    lines.push("");
+    lines.push(`**Lösungswort (Buchstaben nach rewardNumber sortiert):** \`${finalWord}\``);
+    lines.push("");
+    lines.push("| Station | Titel | Buchstabe | Position im Lösungswort |");
+    lines.push("|---------|-------|-----------|------------------------|");
+    for (const st of sorted) {
+      lines.push(`| ${st.order} | ${st.title} | \`${st.rewardLetter}\` | ${st.rewardNumber} |`);
+    }
+    lines.push("");
+    lines.push("---");
+    lines.push("");
+
+    // ── Pro-Station-Blöcke ─────────────────────────────────────────
+    for (const st of stations) {
+      lines.push(`## Station ${st.order} — ${st.title}`);
+      lines.push("");
+
+      // Meta
+      lines.push(`**Challenge-Typ:** \`${st.challengeType}\``);
+      if (st.latitude !== undefined && st.longitude !== undefined) {
+        lines.push(`**Koordinaten:** ${st.latitude}, ${st.longitude}`);
+      }
+      if (st.mapsUrl) {
+        lines.push(`**Maps-Link:** ${st.mapsUrl}`);
+      }
+      lines.push("");
+
+      // Standort-Hinweis
+      lines.push("### Standort-Hinweis");
+      lines.push("");
+      lines.push(st.locationHint);
+      lines.push("");
+
+      // Frage
+      lines.push("### Frage / Aufgabenstellung");
+      lines.push("");
+      lines.push(st.observationQuestion);
+      lines.push("");
+
+      // Akzeptierte Antworten
+      lines.push("### Akzeptierte Antworten");
+      lines.push("");
+      for (const ans of st.acceptedAnswers) {
+        lines.push(`- \`${ans}\``);
+      }
+      lines.push("");
+
+      // Wissenstext
+      lines.push("### Wissenstext");
+      lines.push("");
+      lines.push(st.knowledgeText);
+      lines.push("");
+
+      // Fotoaufgabe
+      lines.push("### Fotoaufgabe");
+      lines.push("");
+      lines.push(st.photoChallenge);
+      lines.push("");
+
+      // Reward
+      lines.push("### Reward");
+      lines.push("");
+      lines.push(
+        `**Buchstabe:** \`${st.rewardLetter}\` — Position **${st.rewardNumber}** im Lösungswort`,
+      );
+      lines.push("");
+
+      lines.push("---");
+      lines.push("");
+    }
+
+    const content = lines.join("\n");
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `strasbourg-mission-content-${date}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ------------------------------------------------------------------
+  // Compact review export (Frage + Wissenstext + Antworten only)
+  // ------------------------------------------------------------------
+
+  /**
+   * Generates a focused Markdown file for didactic review — contains ONLY
+   * the pedagogically relevant content per station: question, knowledge text,
+   * and the full list of accepted answers (including all spelling variants).
+   *
+   * Intentionally omits: coordinates, mapsUrl, locationHint, photoChallenge,
+   * rewardLetter/Number, and all team/status data.
+   *
+   * Optimised for paste into Claude/Opus or a human reviewer — no noise.
+   * Same stationsRef.current source and Blob pattern as the full export.
+   */
+  function handleExportReview(): void {
+    const stations = stationsRef.current;
+    if (stations.length === 0) return;
+
+    const now = new Date();
+    const date = now.toISOString().slice(0, 10);
+    const timestamp = now.toLocaleString("de-DE", {
+      day: "2-digit", month: "2-digit", year: "numeric",
+      hour: "2-digit", minute: "2-digit",
+    });
+
+    const lines: string[] = [
+      "# Strasbourg Mission — Review Export",
+      "",
+      `> Exportiert am ${timestamp}`,
+      `> Enthält: Frage, Wissenstext, Akzeptierte Antworten (alle Varianten)`,
+      `> Nicht enthalten: Koordinaten, Reward, Foto-Aufgaben, Teamdaten`,
+      "",
+    ];
+
+    for (const st of stations) {
+      lines.push("---");
+      lines.push("");
+      lines.push(`# Station ${st.order} — ${st.title}`);
+      lines.push("");
+
+      lines.push("## Frage");
+      lines.push("");
+      lines.push(st.observationQuestion);
+      lines.push("");
+
+      lines.push("## Wissenstext");
+      lines.push("");
+      lines.push(st.knowledgeText);
+      lines.push("");
+
+      lines.push("## Akzeptierte Antworten");
+      lines.push("");
+      for (const ans of st.acceptedAnswers) {
+        lines.push(`- \`${ans}\``);
+      }
+      lines.push("");
+    }
+
+    const content = lines.join("\n");
+    const blob = new Blob([content], { type: "text/markdown;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `strasbourg-mission-review-${date}.md`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  // ------------------------------------------------------------------
   // Derived counts (for stats bar)
   // ------------------------------------------------------------------
 
@@ -783,6 +1090,33 @@ export default function MissionControlPage() {
               className="px-4 py-2 text-sm font-medium text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 disabled:opacity-50 transition-colors"
             >
               Alle zurücksetzen
+            </button>
+            <button
+              type="button"
+              onClick={handleExportCSV}
+              disabled={summaries.length === 0}
+              title="Alle Teamdaten als CSV herunterladen (für Excel)"
+              className="px-4 py-2 text-sm font-medium text-stone-400 border border-navy-600 rounded-lg hover:bg-navy-700/50 hover:text-stone-200 disabled:opacity-50 transition-colors"
+            >
+              CSV
+            </button>
+            <button
+              type="button"
+              onClick={handleExportMarkdown}
+              disabled={summaries.length === 0}
+              title="Alle Stationsinhalte als Markdown herunterladen (zur didaktischen Überprüfung)"
+              className="px-4 py-2 text-sm font-medium text-stone-400 border border-navy-600 rounded-lg hover:bg-navy-700/50 hover:text-stone-200 disabled:opacity-50 transition-colors"
+            >
+              Inhalt
+            </button>
+            <button
+              type="button"
+              onClick={handleExportReview}
+              disabled={summaries.length === 0}
+              title="Kompakter Review-Export: Fragen, Wissenstexte und Antworten (für didaktische Analyse)"
+              className="px-4 py-2 text-sm font-medium text-stone-400 border border-navy-600 rounded-lg hover:bg-navy-700/50 hover:text-stone-200 disabled:opacity-50 transition-colors"
+            >
+              Review
             </button>
             <button
               type="button"
@@ -852,6 +1186,16 @@ export default function MissionControlPage() {
                 <p className="text-2xl font-semibold text-cream">{value}</p>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* ── Operations Map ─────────────────────────────────────── */}
+        {summaries.length > 0 && (
+          <div className="mb-6">
+            <MissionMap
+              summaries={summaries}
+              stations={stationsRef.current}
+            />
           </div>
         )}
 
