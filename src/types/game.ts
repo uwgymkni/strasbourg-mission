@@ -30,4 +30,5 @@ export interface TeamProgress {
   finalAnswer: string | null; // null until the team submits the final cipher
   members?: string[];          // team member names, saved on /team-members page
   wrongAnswers?: Record<string, number>; // wrong attempt count per stationId
+  photos?: Record<string, string>;       // stationId → Firebase Storage download URL
 }

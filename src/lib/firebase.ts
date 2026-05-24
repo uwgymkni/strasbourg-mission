@@ -1,5 +1,6 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
 import { getFirestore, type Firestore } from "firebase/firestore";
+import { getStorage as fbGetStorage, type FirebaseStorage } from "firebase/storage";
 
 function assertEnv(): void {
   // Must use dot notation — Next.js only statically inlines process.env.NEXT_PUBLIC_*
@@ -40,6 +41,7 @@ function createApp(): FirebaseApp {
 }
 
 let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 
 /**
  * Returns the Firestore instance. Initializes Firebase on first call.
@@ -48,6 +50,15 @@ let _db: Firestore | null = null;
 export function getDb(): Firestore {
   if (!_db) _db = getFirestore(createApp());
   return _db;
+}
+
+/**
+ * Returns the Firebase Storage instance. Initializes Firebase on first call.
+ * Uses NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET from the app config.
+ */
+export function getStorage(): FirebaseStorage {
+  if (!_storage) _storage = fbGetStorage(createApp());
+  return _storage;
 }
 
 /** Firestore collection names — single source of truth to avoid string typos. */

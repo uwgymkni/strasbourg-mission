@@ -8,7 +8,8 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { getDb, COLLECTIONS } from "@/lib/firebase";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { getDb, getStorage, COLLECTIONS } from "@/lib/firebase";
 import { ok, err, type ServiceResult } from "@/lib/result";
 import type { Station, StationStatus, TeamProgress, ChallengeType } from "@/types/game";
 import { TEAM_CONFIGS } from "@/constants/routes";
@@ -96,6 +97,16 @@ function normalizeTeamProgress(
     members: Array.isArray(data.members)
       ? (data.members as unknown[]).filter((m): m is string => typeof m === "string")
       : undefined,
+    photos:
+      data.photos &&
+      typeof data.photos === "object" &&
+      !Array.isArray(data.photos)
+        ? Object.fromEntries(
+            Object.entries(data.photos as Record<string, unknown>)
+              .filter(([, v]) => typeof v === "string")
+              .map(([k, v]) => [k, v as string])
+          )
+        : {},
   };
 }
 
@@ -341,6 +352,38 @@ export async function resetTeamProgress(
       { merge: false }
     );
     return ok(undefined);
+  } catch (error) {
+    return err(error);
+  }
+}
+
+/**
+ * Uploads a station photo to Firebase Storage and persists the download URL
+ * into the team's progress document.
+ *
+ * Path convention: progress/{teamId}/{stationId}.jpg — overwriting any prior
+ * photo at the same path. Caller is responsible for client-side resizing
+ * before invocation (see src/lib/image.ts).
+ *
+ * Returns the download URL on success. The blob is uploaded as image/jpeg.
+ */
+export async function uploadStationPhoto(
+  teamId: string,
+  stationId: string,
+  blob: Blob
+): Promise<ServiceResult<string>> {
+  try {
+    const path = `progress/${teamId}/${stationId}.jpg`;
+    const ref = storageRef(getStorage(), path);
+
+    await uploadBytes(ref, blob, { contentType: "image/jpeg" });
+    const url = await getDownloadURL(ref);
+
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+      [`photos.${stationId}`]: url,
+    });
+
+    return ok(url);
   } catch (error) {
     return err(error);
   }

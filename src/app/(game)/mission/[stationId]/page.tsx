@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { useRequireAuth } from "@/hooks/useRequireAuth";
 import { useGame } from "@/hooks/useGame";
@@ -11,9 +11,17 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import type { StationStatus } from "@/types/game";
 import { haversineMeters, walkingMinutes, formatDistance } from "@/lib/geo";
+import { resizeImage } from "@/lib/image";
+import { fetchTeamProgress, uploadStationPhoto } from "@/services/game.service";
 
 // Wrong answers before the skip button becomes available
 const SKIP_THRESHOLD = 2;
+
+// Photo upload limits — keep generous for the raw file (camera apps vary widely);
+// resize step caps the actual upload at ~200–500 KB regardless.
+const MAX_RAW_FILE_BYTES = 15 * 1024 * 1024;
+const RESIZE_MAX_EDGE = 1600;
+const RESIZE_QUALITY = 0.85;
 
 function isAnswerCorrect(input: string, accepted: string[]): boolean {
   const n = input.trim().toLowerCase();
@@ -55,6 +63,12 @@ export default function MissionPage() {
   // Two-step skip confirmation — prevents accidental skips
   const [skipConfirming, setSkipConfirming] = useState(false);
 
+  // ── Photo upload — optional, never blocks the answer flow ────────────────
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const [photoError, setPhotoError] = useState<string | null>(null);
+
   const station = stations.find((s) => s.id === stationId);
   const stationStatus = (progress[stationId] ?? "locked") as StationStatus;
   const wrongCount = wrongAnswers[stationId] ?? 0;
@@ -87,6 +101,22 @@ export default function MissionPage() {
       initTeamId(user.teamCode);
     }
   }, [user?.teamCode]);
+
+  // Load any previously-uploaded photo URL for this station — one extra
+  // Firestore read per page mount. Independent of the game-load flow so a
+  // photo network error never affects the answer form.
+  useEffect(() => {
+    if (!user?.teamCode || !stationId) return;
+    let cancelled = false;
+    void (async () => {
+      const result = await fetchTeamProgress(user.teamCode);
+      if (cancelled) return;
+      if (result.success && result.data?.photos?.[stationId]) {
+        setPhotoUrl(result.data.photos[stationId]);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user?.teamCode, stationId]);
 
   // ── All hooks above — guards and conditionals below ───────────────────────
 
@@ -139,6 +169,45 @@ export default function MissionPage() {
     const result = await skipCurrentStation();
     if (!result.success) return; // Firebase error shown by hook
     setPhase("skipped");
+  }
+
+  /**
+   * Photo upload — completely independent of the answer flow.
+   * Failure never blocks gameplay; the student can keep playing without a photo.
+   */
+  async function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    // Reset the input value so picking the same file again still triggers onChange
+    if (e.target) e.target.value = "";
+    if (!file || !user?.teamCode) return;
+
+    setPhotoError(null);
+
+    if (!file.type.startsWith("image/")) {
+      setPhotoError("Bitte ein Bild auswählen.");
+      return;
+    }
+    if (file.size > MAX_RAW_FILE_BYTES) {
+      setPhotoError("Datei zu groß. Bitte ein anderes Foto wählen.");
+      return;
+    }
+
+    setPhotoUploading(true);
+    try {
+      const blob = await resizeImage(file, RESIZE_MAX_EDGE, RESIZE_QUALITY);
+      const result = await uploadStationPhoto(user.teamCode, stationId, blob);
+      if (result.success) {
+        setPhotoUrl(result.data);
+      } else {
+        setPhotoError(result.error);
+      }
+    } catch (err) {
+      setPhotoError(
+        err instanceof Error ? err.message : "Foto-Upload fehlgeschlagen."
+      );
+    } finally {
+      setPhotoUploading(false);
+    }
   }
 
   // ── Loading / not-found ───────────────────────────────────────────────────
@@ -451,6 +520,74 @@ export default function MissionPage() {
             Fotoaufgabe
           </p>
           <p className="text-stone-400 text-sm leading-relaxed">{station.photoChallenge}</p>
+
+          {/* Hidden file input — triggered by the visible label/button below.
+              accept + capture cues mobile OS to surface the camera as default. */}
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            capture="environment"
+            onChange={handlePhotoChange}
+            disabled={photoUploading}
+            className="hidden"
+            aria-hidden="true"
+          />
+
+          {/* Thumbnail of the already-uploaded photo (if any) */}
+          {photoUrl && (
+            <div className="mt-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={photoUrl}
+                alt="Euer Foto zu dieser Station"
+                className="w-full max-h-56 object-cover rounded-xl border border-navy-700"
+              />
+            </div>
+          )}
+
+          {/* Upload trigger — full-width mobile button.
+              Label is acting as a button per HTML semantics so the hidden
+              input receives the tap correctly on iOS. */}
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={photoUploading}
+            className="
+              mt-4 flex items-center justify-center gap-2
+              w-full px-4 py-2.5 rounded-xl
+              text-sm font-medium text-gold-400
+              bg-gold-500/10 border border-gold-500/40
+              hover:bg-gold-500/15 active:bg-gold-500/20
+              disabled:opacity-60 disabled:cursor-not-allowed
+              transition-colors duration-150
+              focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold-500
+            "
+          >
+            {photoUploading ? (
+              <>
+                <span className="w-4 h-4 rounded-full border-2 border-gold-500/40 border-t-gold-400 animate-spin" />
+                Foto wird hochgeladen …
+              </>
+            ) : (
+              <>
+                <span aria-hidden="true">📷</span>
+                {photoUrl ? "Foto ersetzen" : "Foto aufnehmen oder wählen"}
+              </>
+            )}
+          </button>
+
+          {/* Inline error — never blocks the answer form */}
+          {photoError && (
+            <p role="alert" className="mt-2 text-xs text-red-400">
+              {photoError} Spielfluss läuft trotzdem weiter.
+            </p>
+          )}
+
+          {/* Privacy hint */}
+          <p className="mt-3 text-xs text-stone-600 leading-relaxed">
+            Foto ist optional. Eure Lehrkraft sieht das Foto in Mission Control.
+          </p>
         </Card>
 
         <Card padding="md">
