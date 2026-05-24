@@ -273,27 +273,62 @@ export async function submitFinalSolution(
 }
 
 /**
- * Resets a team's progress to a clean initial state.
- * Preserves the document (for audit history) but wipes all progress fields.
- * Admin-facing — hooks should guard this behind a role check.
+ * Resets a team's progress to a clean initial state:
+ *   - station-1 → "active", all others → "locked"
+ *   - currentStationId = first station by order
+ *   - startedAt = 0 (not yet started)
+ *   - wrongAnswers, finalAnswer, finishedAt cleared
+ *   - members preserved (read from existing doc before overwrite)
+ *
+ * Fetches the stations collection to build a correct progress map so the
+ * dashboard shows station-1 as active immediately after reset.
  */
 export async function resetTeamProgress(
   teamId: string
 ): Promise<ServiceResult<void>> {
   try {
+    // 1. Fetch ordered station IDs to build the initial progress map.
+    const stationsSnap = await getDocs(
+      query(collection(getDb(), COLLECTIONS.STATIONS), orderBy("order"))
+    );
+    const stationIds = stationsSnap.docs.map((d) => d.id);
+
+    if (stationIds.length === 0) {
+      return err(new Error("Keine Stationen gefunden — Reset abgebrochen."));
+    }
+
+    // 2. Preserve team members — read existing doc before overwriting.
+    const existingSnap = await getDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId));
+    const existingData = existingSnap.exists()
+      ? (existingSnap.data() as Record<string, unknown>)
+      : null;
+    const members = Array.isArray(existingData?.members)
+      ? (existingData!.members as unknown[]).filter(
+          (m): m is string => typeof m === "string"
+        )
+      : [];
+
+    // 3. Build progress map: first station active, rest locked.
+    const progress: Record<string, string> = {};
+    stationIds.forEach((id, idx) => {
+      progress[id] = idx === 0 ? "active" : "locked";
+    });
+
+    // 4. Full overwrite — merge: false ensures no stale fields survive.
     await setDoc(
       doc(getDb(), COLLECTIONS.PROGRESS, teamId),
       {
         teamId,
-        progress: {},
-        currentStationId: null,
-        startedAt: Date.now(),
+        progress,
+        currentStationId: stationIds[0],
+        startedAt: 0,        // 0 = not yet started (distinct from Date.now())
         finishedAt: null,
         finalAnswer: null,
         wrongAnswers: {},
+        members,             // restored from pre-reset snapshot
         resetAt: Date.now(),
       },
-      { merge: false } // Full overwrite — this is intentional for a hard reset
+      { merge: false }
     );
     return ok(undefined);
   } catch (error) {
