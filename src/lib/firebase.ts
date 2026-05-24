@@ -66,4 +66,7 @@ export const COLLECTIONS = {
   TEAMS: "teams",
   STATIONS: "stations",
   PROGRESS: "progress",
+  /** Pre-reset snapshots: archive/{teamId}/snapshots/{timestamp}. Never read by
+   *  the student- or teacher-facing pages — kept for post-trip retrospection. */
+  ARCHIVE: "archive",
 } as const;

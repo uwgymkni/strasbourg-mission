@@ -318,6 +318,35 @@ export async function submitFinalSolution(
 }
 
 /**
+ * Writes a snapshot of the team's current progress document into
+ * archive/{teamId}/snapshots/{timestamp} before any destructive reset
+ * touches it. Adds two metadata fields and persists every other field
+ * verbatim — so future field additions on TeamProgress are automatically
+ * captured without changing this helper.
+ *
+ * Never used by the student- or teacher-facing pages. Only called from
+ * resetTeamProgress as a best-effort safety net.
+ */
+async function archiveTeamProgress(
+  teamId: string,
+  source: Record<string, unknown>
+): Promise<void> {
+  const archivedAt = Date.now();
+  const archiveDoc = doc(
+    getDb(),
+    COLLECTIONS.ARCHIVE,
+    teamId,
+    "snapshots",
+    String(archivedAt)
+  );
+  await setDoc(archiveDoc, {
+    ...source,
+    archivedAt,
+    archivedBy: "mission-control",
+  });
+}
+
+/**
  * Best-effort cleanup of a team's photos in Firebase Storage.
  * Lists everything under progress/{teamId}/ and deletes each object in
  * parallel. Idempotent: an empty prefix yields items: [] and the function
@@ -346,6 +375,8 @@ async function deleteTeamPhotos(teamId: string): Promise<void> {
 
 /**
  * Resets a team's progress to a clean initial state:
+ *   - Snapshot of the existing doc written to archive/{teamId}/snapshots/{ts}
+ *     before any destructive write (best-effort — never blocks the reset)
  *   - Storage folder progress/{teamId}/ wiped (best-effort, non-blocking)
  *   - station-1 → "active", all others → "locked"
  *   - currentStationId = first station by order
@@ -360,10 +391,26 @@ export async function resetTeamProgress(
   teamId: string
 ): Promise<ServiceResult<void>> {
   try {
-    // 0. Best-effort photo cleanup BEFORE the Firestore reset.
-    //    Swallowed catch ensures a Storage failure never blocks Firestore.
-    //    Mission Control gracefully degrades: after the Firestore reset
-    //    the photos map is gone, so orphan files (if any) stay invisible.
+    // 0a. Read the existing progress doc once — both for the archive snapshot
+    //     AND to preserve team members below. Single read serves both purposes.
+    const existingSnap = await getDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId));
+    const existingData = existingSnap.exists()
+      ? (existingSnap.data() as Record<string, unknown>)
+      : null;
+
+    // 0b. Best-effort archive of the pre-reset state. Skipped silently if no
+    //     prior doc exists (fresh team). A failure here logs and continues —
+    //     the primary reset action is more important than the safety net.
+    if (existingData) {
+      await archiveTeamProgress(teamId, existingData).catch((e: unknown) => {
+        console.warn(`[reset] archive for ${teamId} failed:`, e);
+      });
+    }
+
+    // 0c. Best-effort photo cleanup BEFORE the Firestore reset.
+    //     Swallowed catch ensures a Storage failure never blocks Firestore.
+    //     Mission Control gracefully degrades: after the Firestore reset
+    //     the photos map is gone, so orphan files (if any) stay invisible.
     await deleteTeamPhotos(teamId).catch((e: unknown) => {
       console.warn(`[reset] Storage cleanup for ${teamId} failed:`, e);
     });
@@ -387,11 +434,7 @@ export async function resetTeamProgress(
       ...stationIds.slice(0, offset),
     ];
 
-    // 3. Preserve team members — read existing doc before overwriting.
-    const existingSnap = await getDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId));
-    const existingData = existingSnap.exists()
-      ? (existingSnap.data() as Record<string, unknown>)
-      : null;
+    // 3. Preserve team members — reuse the read from step 0a.
     const members = Array.isArray(existingData?.members)
       ? (existingData!.members as unknown[]).filter(
           (m): m is string => typeof m === "string"
