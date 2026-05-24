@@ -5,6 +5,8 @@ import {
   fetchStations,
   fetchAllProgress,
   resetTeamProgress,
+  fetchTeamArchive,
+  type ArchiveSnapshot,
 } from "@/services/game.service";
 import { fetchAllTeams } from "@/services/auth.service";
 import type { Station, StationStatus, TeamProgress } from "@/types/game";
@@ -20,6 +22,20 @@ const PROGRESS_POLL_MS = 30_000;
 // ---------------------------------------------------------------------------
 // View model
 // ---------------------------------------------------------------------------
+
+/**
+ * Lazy-loaded archive cache state for a single team.
+ *   - "loading" → fetch in flight, no data yet
+ *   - "loaded"  → fetch succeeded; snapshots may be empty []
+ *   - "error"   → fetch failed; user can retry via the "erneut versuchen" link
+ *
+ * Keyed by teamId in the parent component. Never auto-populated — only set
+ * when the teacher explicitly clicks "Archiv anzeigen".
+ */
+type ArchiveState =
+  | { status: "loading"; snapshots: ArchiveSnapshot[] }
+  | { status: "loaded";  snapshots: ArchiveSnapshot[] }
+  | { status: "error";   snapshots: ArchiveSnapshot[]; error: string };
 
 interface TeamSummary {
   teamId: string;
@@ -343,6 +359,150 @@ function TeamDetailRow({
 }
 
 /**
+ * One row in the archive list — a single pre-reset snapshot rendered as a
+ * compact summary card. Re-derives counts/status from the archived progress
+ * map so the SnapshotCard is fully self-contained (no parent helpers).
+ */
+function SnapshotCard({
+  snap,
+  stations,
+}: {
+  snap: ArchiveSnapshot;
+  stations: Station[];
+}) {
+  const total = stations.length;
+  const completed = Object.values(snap.progress).filter((v) => v === "completed").length;
+  const skipped   = Object.values(snap.progress).filter((v) => v === "skipped").length;
+  const wrongs = Object.values(snap.wrongAnswers ?? {}).reduce(
+    (sum, n) => sum + (typeof n === "number" ? n : 0),
+    0
+  );
+  const isFinished =
+    typeof snap.finalAnswer === "string" && snap.finalAnswer.length > 0;
+  const wasStarted = snap.startedAt > 0;
+  const members = snap.members ?? [];
+
+  const when = new Date(snap.archivedAt).toLocaleString("de-DE", {
+    day:    "2-digit",
+    month:  "2-digit",
+    year:   "numeric",
+    hour:   "2-digit",
+    minute: "2-digit",
+  });
+
+  return (
+    <div className="bg-navy-900/40 border border-navy-700/40 rounded-lg px-3 py-2.5">
+      <div className="flex items-baseline justify-between gap-3 mb-1.5">
+        <p className="text-xs text-stone-400 tabular-nums">{when}</p>
+        {isFinished ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-gold-500/15 text-gold-300 border border-gold-500/30">
+            Fertig
+          </span>
+        ) : wasStarted ? (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-blue-500/15 text-blue-300 border border-blue-500/30">
+            War aktiv
+          </span>
+        ) : (
+          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-navy-700/50 text-stone-500 border border-navy-600">
+            Nicht gestartet
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs">
+        <span>
+          <span className="text-stone-500">Fortschritt: </span>
+          <span className="text-cream tabular-nums">{completed} / {total}</span>
+          {skipped > 0 && (
+            <span className="text-stone-500"> ({skipped} übersprungen)</span>
+          )}
+        </span>
+        <span>
+          <span className="text-stone-500">Fehler: </span>
+          <span className={wrongs > 0 ? "text-red-400" : "text-stone-300"}>
+            {wrongs}
+          </span>
+        </span>
+        {isFinished && snap.finalAnswer && (
+          <span>
+            <span className="text-stone-500">Lösung: </span>
+            <span className="text-gold-400 font-mono">„{snap.finalAnswer}"</span>
+          </span>
+        )}
+      </div>
+
+      {members.length > 0 && (
+        <p className="text-xs text-stone-500 mt-1.5 truncate">
+          <span className="text-stone-600">Mitglieder: </span>
+          <span className="text-stone-400">{members.join(", ")}</span>
+        </p>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Collapsible archive section rendered beneath TeamDetailRow inside the
+ * expanded `<tr>`. Renders a toggle button and, when open, the cached state
+ * for this team (loading / loaded / error / empty).
+ *
+ * The component is purely presentational — fetching, caching, and visibility
+ * are owned by the parent page so multiple sections share the same cache.
+ */
+function ArchiveSection({
+  stations,
+  state,
+  open,
+  onToggle,
+  onReload,
+}: {
+  stations: Station[];
+  state: ArchiveState | undefined;
+  open: boolean;
+  onToggle: () => void;
+  onReload: () => void;
+}) {
+  return (
+    <div className="mt-5 pt-4 border-t border-navy-700/40">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="text-xs font-medium text-stone-500 hover:text-stone-300 transition-colors"
+      >
+        {open ? "Archiv verbergen ▲" : "Archiv anzeigen ▼"}
+      </button>
+
+      {open && (
+        <div className="mt-3 flex flex-col gap-2">
+          {!state || state.status === "loading" ? (
+            <p className="text-xs text-stone-500 italic">Archiv wird geladen …</p>
+          ) : state.status === "error" ? (
+            <p className="text-xs text-red-400">
+              {state.error}{" "}
+              <button
+                type="button"
+                onClick={onReload}
+                className="underline hover:text-red-300"
+              >
+                erneut versuchen
+              </button>
+            </p>
+          ) : state.snapshots.length === 0 ? (
+            <p className="text-xs text-stone-500 italic">
+              Kein Archiv vorhanden — bisher kein Reset durchgeführt.
+            </p>
+          ) : (
+            state.snapshots.map((snap) => (
+              <SnapshotCard key={snap.id} snap={snap} stations={stations} />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/**
  * Compact per-station answer list. Shows the correct answer (cream font-mono)
  * when present; otherwise falls back to the latest wrong attempt (red, with
  * "falsch:" prefix). Stations with neither entry are skipped.
@@ -420,6 +580,15 @@ export default function MissionControlPage() {
   // teamId of the currently expanded detail row — null means no row is open.
   // Independent of summaries state, so auto-refresh never closes the row.
   const [expandedTeamId,  setExpandedTeamId]  = useState<string | null>(null);
+
+  // Lazy-loaded archive state, keyed by teamId. Never populated automatically:
+  // a team's archive is fetched only when the teacher clicks "Archiv anzeigen"
+  // inside that team's expanded detail row. Cache survives close/re-open so
+  // toggling visibility never re-fetches.
+  const [archives,        setArchives]        = useState<
+    Record<string, ArchiveState>
+  >({});
+  const [archiveOpenFor,  setArchiveOpenFor]  = useState<Set<string>>(new Set());
 
   // ------------------------------------------------------------------
   // Data loading
@@ -501,6 +670,51 @@ export default function MissionControlPage() {
     } else {
       setError(result.error);
     }
+  }
+
+  /**
+   * Lazy fetch of a team's archive snapshots. Skips the fetch when the cache
+   * already has fresh data; re-fetches when the previous attempt errored.
+   * Set state never resets to "loading" if data was previously loaded — so a
+   * second click ("Archiv anzeigen" → "verbergen" → "anzeigen") never flashes
+   * a loading spinner.
+   */
+  async function loadArchive(teamId: string): Promise<void> {
+    const current = archives[teamId];
+    if (current && current.status === "loading") return;
+    if (current && current.status === "loaded")  return;
+
+    setArchives((prev) => ({
+      ...prev,
+      [teamId]: { status: "loading", snapshots: prev[teamId]?.snapshots ?? [] },
+    }));
+
+    const result = await fetchTeamArchive(teamId);
+
+    setArchives((prev) => ({
+      ...prev,
+      [teamId]: result.success
+        ? { status: "loaded", snapshots: result.data }
+        : { status: "error", snapshots: [], error: result.error },
+    }));
+  }
+
+  /**
+   * Toggle the archive section's visibility for a team. Opening lazily kicks
+   * off a load if no cache exists. Closing never clears the cache, so the
+   * next open is instant.
+   */
+  function toggleArchive(teamId: string): void {
+    setArchiveOpenFor((prev) => {
+      const next = new Set(prev);
+      if (next.has(teamId)) {
+        next.delete(teamId);
+      } else {
+        next.add(teamId);
+        void loadArchive(teamId); // safe to fire-and-forget — handler is idempotent
+      }
+      return next;
+    });
   }
 
   /**
@@ -851,6 +1065,13 @@ export default function MissionControlPage() {
                         <TeamDetailRow
                           team={s}
                           stations={stationsRef.current}
+                        />
+                        <ArchiveSection
+                          stations={stationsRef.current}
+                          state={archives[s.teamId]}
+                          open={archiveOpenFor.has(s.teamId)}
+                          onToggle={() => toggleArchive(s.teamId)}
+                          onReload={() => void loadArchive(s.teamId)}
                         />
                       </td>
                     </tr>

@@ -170,6 +170,61 @@ export async function fetchAllProgress(): Promise<ServiceResult<TeamProgress[]>>
   }
 }
 
+/**
+ * A pre-reset archive snapshot — full TeamProgress data plus two metadata
+ * fields written by archiveTeamProgress before each reset.
+ */
+export interface ArchiveSnapshot extends TeamProgress {
+  id: string;          // Firestore doc-ID = String(archivedAt)
+  archivedAt: number;
+  archivedBy: string;
+}
+
+/**
+ * Fetches every snapshot for a single team, sorted newest first.
+ *
+ * Reads archive/{teamId}/snapshots ordered by archivedAt desc. Uses an
+ * implicit single-field index — Firestore creates and maintains it
+ * automatically, no firestore.indexes.json entry needed.
+ *
+ * Returns an empty array when the team has no snapshots — never null,
+ * never throws on emptiness. Only used by Mission Control on demand
+ * (lazy-loaded), never by student-facing pages.
+ */
+export async function fetchTeamArchive(
+  teamId: string
+): Promise<ServiceResult<ArchiveSnapshot[]>> {
+  try {
+    const snapsCollection = collection(
+      getDb(),
+      COLLECTIONS.ARCHIVE,
+      teamId,
+      "snapshots"
+    );
+    const q = query(snapsCollection, orderBy("archivedAt", "desc"));
+    const snap = await getDocs(q);
+
+    const list: ArchiveSnapshot[] = snap.docs.map((d) => {
+      const data = d.data() as Record<string, unknown>;
+      // Reuse the same defensive parser that normalizes live progress docs,
+      // then graft the three archive-specific fields on top.
+      const base = normalizeTeamProgress(teamId, data);
+      return {
+        ...base,
+        id: d.id,
+        archivedAt:
+          typeof data.archivedAt === "number" ? data.archivedAt : 0,
+        archivedBy:
+          typeof data.archivedBy === "string" ? data.archivedBy : "",
+      };
+    });
+
+    return ok(list);
+  } catch (error) {
+    return err(error);
+  }
+}
+
 /** Fetches the current progress document for a team. Returns null data if none exists yet. */
 export async function fetchTeamProgress(
   teamId: string
