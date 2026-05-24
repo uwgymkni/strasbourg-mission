@@ -8,7 +8,13 @@ import {
   setDoc,
   updateDoc,
 } from "firebase/firestore";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import {
+  ref as storageRef,
+  uploadBytes,
+  getDownloadURL,
+  listAll,
+  deleteObject,
+} from "firebase/storage";
 import { getDb, getStorage, COLLECTIONS } from "@/lib/firebase";
 import { ok, err, type ServiceResult } from "@/lib/result";
 import type { Station, StationStatus, TeamProgress, ChallengeType } from "@/types/game";
@@ -312,7 +318,35 @@ export async function submitFinalSolution(
 }
 
 /**
+ * Best-effort cleanup of a team's photos in Firebase Storage.
+ * Lists everything under progress/{teamId}/ and deletes each object in
+ * parallel. Idempotent: an empty prefix yields items: [] and the function
+ * resolves immediately. Per-file errors (e.g. object-not-found in a race
+ * with another delete) are caught individually so one bad file never
+ * stops the rest. Any outer error (listAll failure, network outage) is
+ * swallowed by the caller so the Firestore reset always runs.
+ */
+async function deleteTeamPhotos(teamId: string): Promise<void> {
+  const folderRef = storageRef(getStorage(), `progress/${teamId}`);
+  const listing = await listAll(folderRef);
+  await Promise.all(
+    listing.items.map((itemRef) =>
+      deleteObject(itemRef).catch((e: unknown) => {
+        const code = (e as { code?: string })?.code;
+        if (code === "storage/object-not-found") return; // already gone — fine
+        // Other per-file failures: log and continue with the rest.
+        console.warn(
+          `[reset] failed to delete ${itemRef.fullPath}:`,
+          e
+        );
+      })
+    )
+  );
+}
+
+/**
  * Resets a team's progress to a clean initial state:
+ *   - Storage folder progress/{teamId}/ wiped (best-effort, non-blocking)
  *   - station-1 → "active", all others → "locked"
  *   - currentStationId = first station by order
  *   - startedAt = 0 (not yet started)
@@ -326,6 +360,14 @@ export async function resetTeamProgress(
   teamId: string
 ): Promise<ServiceResult<void>> {
   try {
+    // 0. Best-effort photo cleanup BEFORE the Firestore reset.
+    //    Swallowed catch ensures a Storage failure never blocks Firestore.
+    //    Mission Control gracefully degrades: after the Firestore reset
+    //    the photos map is gone, so orphan files (if any) stay invisible.
+    await deleteTeamPhotos(teamId).catch((e: unknown) => {
+      console.warn(`[reset] Storage cleanup for ${teamId} failed:`, e);
+    });
+
     // 1. Fetch ordered station IDs to build the initial progress map.
     const stationsSnap = await getDocs(
       query(collection(getDb(), COLLECTIONS.STATIONS), orderBy("order"))
