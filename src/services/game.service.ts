@@ -107,6 +107,26 @@ function normalizeTeamProgress(
               .map(([k, v]) => [k, v as string])
           )
         : {},
+    answers:
+      data.answers &&
+      typeof data.answers === "object" &&
+      !Array.isArray(data.answers)
+        ? Object.fromEntries(
+            Object.entries(data.answers as Record<string, unknown>)
+              .filter(([, v]) => typeof v === "string")
+              .map(([k, v]) => [k, v as string])
+          )
+        : {},
+    lastWrongAnswer:
+      data.lastWrongAnswer &&
+      typeof data.lastWrongAnswer === "object" &&
+      !Array.isArray(data.lastWrongAnswer)
+        ? Object.fromEntries(
+            Object.entries(data.lastWrongAnswer as Record<string, unknown>)
+              .filter(([, v]) => typeof v === "string")
+              .map(([k, v]) => [k, v as string])
+          )
+        : {},
   };
 }
 
@@ -174,7 +194,8 @@ export async function fetchTeamProgress(
 export async function persistStationCompletion(
   teamId: string,
   stationId: string,
-  nextStationId: string | null
+  nextStationId: string | null,
+  answer?: string
 ): Promise<ServiceResult<void>> {
   try {
     const update: Record<string, unknown> = {
@@ -183,6 +204,12 @@ export async function persistStationCompletion(
     if (nextStationId) {
       update[`progress.${nextStationId}`] = "active" satisfies StationStatus;
       update.currentStationId = nextStationId;
+    }
+    // Persist the student's correct input alongside the status flip — single
+    // atomic update. Field is optional so legacy callers without an answer
+    // continue to work unchanged.
+    if (typeof answer === "string" && answer.length > 0) {
+      update[`answers.${stationId}`] = answer;
     }
     await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), update);
     return ok(undefined);
@@ -351,6 +378,30 @@ export async function resetTeamProgress(
       },
       { merge: false }
     );
+    return ok(undefined);
+  } catch (error) {
+    return err(error);
+  }
+}
+
+/**
+ * Persists a wrong-answer attempt to Firestore — writes both the new count
+ * and the raw text the student typed. Called on every wrong submission so
+ * Mission Control can show in-flight struggles, not only post-skip data.
+ *
+ * Both fields use dot-notation updates and are idempotent under retry.
+ */
+export async function persistWrongAnswer(
+  teamId: string,
+  stationId: string,
+  answer: string,
+  count: number
+): Promise<ServiceResult<void>> {
+  try {
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+      [`wrongAnswers.${stationId}`]: count,
+      [`lastWrongAnswer.${stationId}`]: answer,
+    });
     return ok(undefined);
   } catch (error) {
     return err(error);

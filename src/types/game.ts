@@ -31,4 +31,6 @@ export interface TeamProgress {
   members?: string[];          // team member names, saved on /team-members page
   wrongAnswers?: Record<string, number>; // wrong attempt count per stationId
   photos?: Record<string, string>;       // stationId → Firebase Storage download URL
+  answers?: Record<string, string>;          // stationId → the correct answer the student typed
+  lastWrongAnswer?: Record<string, string>;  // stationId → most recent wrong submission
 }

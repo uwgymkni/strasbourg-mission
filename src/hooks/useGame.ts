@@ -18,6 +18,7 @@ import {
   persistProgress,
   submitFinalSolution,
   resetTeamProgress,
+  persistWrongAnswer,
 } from "@/services/game.service";
 import { ok, type ServiceResult } from "@/lib/result";
 import type { Station, TeamProgress } from "@/types/game";
@@ -139,7 +140,7 @@ export function useGame() {
    * Steps 2 and 3 only run if step 1 succeeds. The store never moves ahead of Firebase.
    * Retries are safe — the Firestore write is idempotent (dot-notation update).
    */
-  async function completeCurrentStation(): Promise<ServiceResult<void>> {
+  async function completeCurrentStation(answer?: string): Promise<ServiceResult<void>> {
     const currentId = useGameStore.getState().currentStationId;
 
     if (!currentId) {
@@ -166,7 +167,8 @@ export function useGame() {
     const result = await persistStationCompletion(
       teamIdRef.current,
       currentId,
-      nextStationId
+      nextStationId,
+      answer
     );
 
     if (!result.success) {
@@ -258,9 +260,18 @@ export function useGame() {
     return ok(undefined);
   }
 
-  /** Increments the local wrong-answer counter for a station. Persisted to localStorage. */
-  function incrementWrongAnswer(stationId: string): void {
+  /**
+   * Increments the local wrong-answer counter for a station. Persisted to localStorage.
+   * If `answer` is provided, also fires-and-forgets a Firestore update so Mission Control
+   * can see the count + the raw wrong text in (near) real time. Never throws — a failed
+   * persist must not block the student from trying again.
+   */
+  function incrementWrongAnswer(stationId: string, answer?: string): void {
     incrementWrongAnswerInStore(stationId);
+    if (typeof answer === "string" && answer.length > 0 && teamIdRef.current) {
+      const newCount = useGameStore.getState().wrongAnswers[stationId] ?? 0;
+      void persistWrongAnswer(teamIdRef.current, stationId, answer, newCount);
+    }
   }
 
   /**

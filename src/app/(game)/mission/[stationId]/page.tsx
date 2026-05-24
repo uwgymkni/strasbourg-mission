@@ -131,7 +131,8 @@ export default function MissionPage() {
 
     // 1. Validate locally — no Firebase call if wrong
     if (!isAnswerCorrect(answer, station.acceptedAnswers)) {
-      incrementWrongAnswer(stationId);
+      // Pass the raw input so it's also persisted alongside the count
+      incrementWrongAnswer(stationId, answer.trim());
       const newCount = wrongCount + 1; // compute locally — store update is async
 
       if (newCount < SKIP_THRESHOLD) {
@@ -150,8 +151,9 @@ export default function MissionPage() {
       return;
     }
 
-    // 3. Persist to Firebase, then update store
-    const result = await completeCurrentStation();
+    // 3. Persist to Firebase, then update store — pass the correct input so
+    //    Mission Control can show what the team actually typed.
+    const result = await completeCurrentStation(answer.trim());
     if (!result.success) return; // error shown by hook
 
     setPhase("reward");

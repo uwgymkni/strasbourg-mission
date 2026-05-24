@@ -35,6 +35,8 @@ interface TeamSummary {
   members: string[];
   totalWrongAnswers: number;
   photos: Record<string, string>; // stationId → Storage download URL (empty = no photos)
+  answers: Record<string, string>;          // stationId → correct answer the student typed
+  lastWrongAnswer: Record<string, string>;  // stationId → most recent wrong submission
 }
 
 function buildSummaries(
@@ -77,6 +79,8 @@ function buildSummaries(
         members:             prog?.members ?? [],
         totalWrongAnswers,
         photos:              prog?.photos ?? {},
+        answers:             prog?.answers ?? {},
+        lastWrongAnswer:     prog?.lastWrongAnswer ?? {},
       };
     })
     .sort((a, b) => {
@@ -220,6 +224,53 @@ function PhotoList({
             className="w-10 h-10 rounded object-cover border border-navy-700 hover:border-gold-500/60 transition-colors"
           />
         </a>
+      ))}
+    </div>
+  );
+}
+
+/**
+ * Compact per-station answer list. Shows the correct answer (cream font-mono)
+ * when present; otherwise falls back to the latest wrong attempt (red, with
+ * "falsch:" prefix). Stations with neither entry are skipped.
+ * Sorted by station.order so output is stable across renders.
+ */
+function AnswerList({
+  answers,
+  lastWrongAnswer,
+  stations,
+}: {
+  answers: Record<string, string>;
+  lastWrongAnswer: Record<string, string>;
+  stations: Station[];
+}) {
+  const items = stations
+    .filter((st) => answers[st.id] || lastWrongAnswer[st.id])
+    .map((st) => ({
+      id: st.id,
+      shortLabel: `S${st.order}`,
+      correct: answers[st.id],
+      wrong: lastWrongAnswer[st.id],
+    }));
+
+  if (items.length === 0) {
+    return <span className="text-stone-700">—</span>;
+  }
+
+  return (
+    <div className="flex flex-col gap-0.5 text-xs max-w-[200px]">
+      {items.map((it) => (
+        <div key={it.id} className="whitespace-nowrap">
+          <span className="text-stone-500">{it.shortLabel}:</span>{" "}
+          {it.correct ? (
+            <span className="text-cream font-mono">{it.correct}</span>
+          ) : (
+            <span>
+              <span className="text-stone-500">falsch:</span>{" "}
+              <span className="text-red-400 font-mono">{it.wrong}</span>
+            </span>
+          )}
+        </div>
       ))}
     </div>
   );
@@ -485,6 +536,7 @@ export default function MissionControlPage() {
                 <th className="text-left px-5 py-4 text-stone-400 font-medium">Status</th>
                 <th className="text-left px-5 py-4 text-stone-400 font-medium hidden md:table-cell">Zeit</th>
                 <th className="text-left px-5 py-4 text-stone-400 font-medium hidden md:table-cell">Fotos</th>
+                <th className="text-left px-5 py-4 text-stone-400 font-medium hidden md:table-cell">Antworten</th>
                 <th className="w-px px-4 py-4" />{/* Reset — no header text */}
               </tr>
             </thead>
@@ -492,14 +544,14 @@ export default function MissionControlPage() {
 
               {/* Skeleton rows on initial load.
                   Column order: Team, Fortschritt, Aktuelle Station, Fehler,
-                  Status, Zeit, Fotos, Reset. Indices 2,3,5,6 are md-only. */}
+                  Status, Zeit, Fotos, Antworten, Reset. Indices 2,3,5,6,7 are md-only. */}
               {loading && summaries.length === 0 && (
                 Array.from({ length: 8 }).map((_, i) => (
                   <tr key={i} className="border-b border-navy-700/50">
-                    {[28, 20, 32, 10, 14, 14, 18, 6].map((w, j) => (
+                    {[28, 20, 32, 10, 14, 14, 18, 22, 6].map((w, j) => (
                       <td
                         key={j}
-                        className={`px-5 py-4${[2, 3, 5, 6].includes(j) ? " hidden md:table-cell" : ""}`}
+                        className={`px-5 py-4${[2, 3, 5, 6, 7].includes(j) ? " hidden md:table-cell" : ""}`}
                       >
                         <div
                           className="h-4 bg-navy-700 rounded animate-pulse"
@@ -514,7 +566,7 @@ export default function MissionControlPage() {
               {/* Empty state */}
               {!loading && summaries.length === 0 && (
                 <tr>
-                  <td colSpan={8} className="px-5 py-8 text-center text-stone-500 italic">
+                  <td colSpan={9} className="px-5 py-8 text-center text-stone-500 italic">
                     Keine Teams gefunden. Zuerst das Seed-Skript ausführen.
                   </td>
                 </tr>
@@ -607,6 +659,15 @@ export default function MissionControlPage() {
                     {/* Fotos --------------------------------------- */}
                     <td className="px-5 py-4 hidden md:table-cell">
                       <PhotoList photos={s.photos} stations={stationsRef.current} />
+                    </td>
+
+                    {/* Antworten ----------------------------------- */}
+                    <td className="px-5 py-4 hidden md:table-cell align-top">
+                      <AnswerList
+                        answers={s.answers}
+                        lastWrongAnswer={s.lastWrongAnswer}
+                        stations={stationsRef.current}
+                      />
                     </td>
 
                     {/* Reset --------------------------------------- */}
