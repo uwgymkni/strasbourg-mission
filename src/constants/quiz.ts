@@ -20,6 +20,15 @@ export const QUIZ_DURATION_OPTIONS_MS = [10_000, 15_000, 20_000] as const;
 export const QUIZ_DEFAULT_DURATION_MS = 15_000;
 export const QUIZ_MAX_POINTS_PER_QUESTION = 100;  // → 1500 max over 15 questions
 
+/** Question 1 always gets a longer window so teams settle in; later questions
+ *  use the duration configured at quiz start (10/15/20 s). */
+export const QUIZ_FIRST_QUESTION_MS = 25_000;
+
+/** Effective time limit for a question: 25 s for index 0, else the configured base. */
+export function effectiveQuestionMs(index: number, baseMs: number): number {
+  return index === 0 ? QUIZ_FIRST_QUESTION_MS : baseMs;
+}
+
 // ── Questions (15) — abgeleitet aus den Wissenstexten der 8 Stationen,
 //    ohne Wiederholung der Stationsfragen. Schwierigkeit ausgewogen.
 export const QUIZ_QUESTIONS: QuizQuestion[] = [

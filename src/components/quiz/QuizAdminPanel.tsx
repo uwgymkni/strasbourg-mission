@@ -18,6 +18,7 @@ import {
   QUIZ_REVEAL_MS,
   QUIZ_DURATION_OPTIONS_MS,
   QUIZ_DEFAULT_DURATION_MS,
+  effectiveQuestionMs,
 } from "@/constants/quiz";
 import { computeScore, rankScores } from "@/lib/quizScoring";
 import { TEAM_CONFIGS } from "@/constants/routes";
@@ -71,6 +72,21 @@ export function QuizAdminPanel() {
     return () => clearInterval(id);
   }, []);
 
+  // When the Mission Control tab is backgrounded, the browser throttles the
+  // 1 s tick above, so a due phase transition (e.g. countdown → question 1)
+  // can stall until the teacher returns. Bump `now` the instant the tab
+  // regains visibility/focus so the controller re-evaluates immediately —
+  // no reload needed.
+  useEffect(() => {
+    const bump = () => setNow(Date.now());
+    document.addEventListener("visibilitychange", bump);
+    window.addEventListener("focus", bump);
+    return () => {
+      document.removeEventListener("visibilitychange", bump);
+      window.removeEventListener("focus", bump);
+    };
+  }, []);
+
   // Response count for the current question (only while a question is live).
   const nonce = state?.sessionNonce ?? "";
   const phase = state?.phase ?? "idle";
@@ -91,6 +107,7 @@ export function QuizAdminPanel() {
     const index = s.currentQuestionIndex;
     const q = QUIZ_QUESTIONS[index];
     const startedAt = s.questionStartedAt ?? 0;
+    const durMs = effectiveQuestionMs(index, s.questionDurationMs);
 
     const [respRes, scoreRes] = await Promise.all([
       fetchResponsesOnce(s.sessionNonce, index),
@@ -127,9 +144,9 @@ export function QuizAdminPanel() {
       //   - rawMs < 0: submission stamped BEFORE questionStartedAt, i.e. a
       //     pre-question write (the countdown-window timing exploit). Clamping
       //     a negative value to 0 would otherwise award full points.
-      const rawMs = r.submittedAt > 0 ? r.submittedAt - startedAt : s.questionDurationMs;
-      const responseMs = rawMs < 0 ? s.questionDurationMs : rawMs;
-      const points = computeScore(responseMs, s.questionDurationMs, correct);
+      const rawMs = r.submittedAt > 0 ? r.submittedAt - startedAt : durMs;
+      const responseMs = rawMs < 0 ? durMs : rawMs;
+      const points = computeScore(responseMs, durMs, correct);
 
       const perQuestion = {
         ...prev.perQuestion,
@@ -188,7 +205,8 @@ export function QuizAdminPanel() {
 
     // question → reveal (all answered OR time up)
     if (state.phase === "question" && state.questionStartedAt !== null) {
-      const timeUp = now >= state.questionStartedAt + state.questionDurationMs;
+      const dur = effectiveQuestionMs(state.currentQuestionIndex, state.questionDurationMs);
+      const timeUp = now >= state.questionStartedAt + dur;
       const allAnswered =
         state.expectedTeamCount > 0 && responseCount >= state.expectedTeamCount;
       if (timeUp || allAnswered) {

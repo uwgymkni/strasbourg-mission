@@ -1,7 +1,7 @@
 "use client";
 
 import { useQuiz } from "@/hooks/useQuiz";
-import { QUIZ_QUESTIONS, QUIZ_COUNTDOWN_MS } from "@/constants/quiz";
+import { QUIZ_QUESTIONS, QUIZ_COUNTDOWN_MS, effectiveQuestionMs } from "@/constants/quiz";
 import { rankScores } from "@/lib/quizScoring";
 
 const OPTION_LETTERS = ["A", "B", "C", "D"];
@@ -22,6 +22,16 @@ export function QuizStudent() {
   if (state.phase === "countdown") {
     const ms = (state.countdownStartedAt ?? now) + QUIZ_COUNTDOWN_MS - now;
     const sec = Math.max(0, Math.ceil(ms / 1000));
+    // Countdown elapsed but the first question hasn't flipped in yet → show a
+    // loading state instead of a frozen "0".
+    if (sec <= 0) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
+          <span className="w-8 h-8 rounded-full border-2 border-gold-500/40 border-t-gold-400 animate-spin mb-5" />
+          <p className="text-gold-400 text-sm font-medium">Erste Frage wird geladen …</p>
+        </div>
+      );
+    }
     return (
       <div className="flex-1 flex flex-col items-center justify-center text-center py-16">
         <p className="text-gold-500 text-xs font-medium tracking-widest uppercase mb-4">
@@ -39,8 +49,9 @@ export function QuizStudent() {
   // ── Question ──────────────────────────────────────────────────────────
   if (state.phase === "question") {
     const startedAt = state.questionStartedAt ?? now;
-    const remaining = Math.max(0, startedAt + state.questionDurationMs - now);
-    const frac = Math.max(0, Math.min(1, remaining / state.questionDurationMs));
+    const durMs = effectiveQuestionMs(state.currentQuestionIndex, state.questionDurationMs);
+    const remaining = Math.max(0, startedAt + durMs - now);
+    const frac = Math.max(0, Math.min(1, remaining / durMs));
     const sec = Math.ceil(remaining / 1000);
 
     return (
