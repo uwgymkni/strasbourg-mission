@@ -10,6 +10,7 @@ import {
 } from "@/services/game.service";
 import { fetchAllTeams } from "@/services/auth.service";
 import { MissionMap } from "@/components/MissionMap";
+import { MissionCountdownAdmin } from "@/components/MissionCountdownAdmin";
 import type { Station, StationStatus, TeamProgress } from "@/types/game";
 import type { AppUser } from "@/types/user";
 
@@ -1166,6 +1167,9 @@ export default function MissionControlPage() {
             </div>
           </div>
         )}
+
+        {/* ── Countdown + announcement (admin) ───────────────────── */}
+        <MissionCountdownAdmin />
 
         {/* ── Stats bar ──────────────────────────────────────────── */}
         {summaries.length > 0 && (

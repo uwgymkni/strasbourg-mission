@@ -69,4 +69,7 @@ export const COLLECTIONS = {
   /** Pre-reset snapshots: archive/{teamId}/snapshots/{timestamp}. Never read by
    *  the student- or teacher-facing pages — kept for post-trip retrospection. */
   ARCHIVE: "archive",
+  /** Global mission settings — a single doc settings/mission holding the
+   *  shared countdown + announcement broadcast to every device. */
+  SETTINGS: "settings",
 } as const;

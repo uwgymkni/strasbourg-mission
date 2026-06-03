@@ -36,3 +36,22 @@ export interface TeamProgress {
   sessionId?: string;                        // active session marker — soft multi-device detection
   lastSeenAt?: number;                       // UNIX ms of last loadGame() heartbeat by the holding session
 }
+
+/**
+ * Global mission settings — a single Firestore doc (settings/mission) shared by
+ * every device. The admin (Mission Control) is the only writer; student devices
+ * subscribe read-only. The countdown runs purely client-side off countdownEndsAt,
+ * so Firestore is written only on admin actions, never per second.
+ */
+export interface MissionSettings {
+  /** Absolute UNIX ms when the countdown hits zero. null = no countdown set. */
+  countdownEndsAt: number | null;
+  /** True while paused — the live ticking is frozen. */
+  countdownPaused: boolean;
+  /** Remaining ms captured at pause time; null when not paused. */
+  pausedRemainingMs: number | null;
+  /** Broadcast message shown to all teams. Empty string = no announcement. */
+  announcement: string;
+  /** UNIX ms of the last admin write — bookkeeping only. */
+  updatedAt: number;
+}

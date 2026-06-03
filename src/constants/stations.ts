@@ -56,7 +56,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Fotografiert eure Gruppe, wie ihr die Pose von Gutenberg nachahmt — eine Hand ausgestreckt, als würdet ihr eine gedruckte Seite präsentieren.",
     knowledgeText:
-      "'Et la lumière fut' — 'Und es ward Licht'. Das Zitat aus dem Buch Genesis steht hier symbolisch für die Erfindung des Buchdrucks: Wissen wird verbreitet, das Zeitalter der Aufklärung beginnt. Johannes Gutenberg hielt sich zwischen 1434 und 1444 in Straßburg auf und führte hier erste Druckexperimente durch, bevor er die Druckerpresse mit beweglichen Lettern in Mainz fertigstellte. Die 1840 von David d'Angers geschaffene Bronzestatue zeigt ihn, wie er die erste gedruckte Seite der Geschichte in den Händen hält.",
+      "Johannes Gutenberg hielt sich zwischen 1434 und 1444 in Straßburg auf und führte hier erste Druckexperimente durch, bevor er die Druckerpresse mit beweglichen Lettern in Mainz fertigstellte. Straßburg gilt damit als Geburtsort seiner Idee — auch wenn der Ruhm der Erfindung oft allein mit Mainz verbunden wird. Die 1840 von David d'Angers geschaffene Bronzestatue zeigt Gutenberg, wie er triumphierend eine gedruckte Seite in den Händen hält. Die Inschrift am Sockel fasst die Bedeutung des Buchdrucks in wenigen Worten zusammen.",
     rewardLetter: "A",
     rewardNumber: 1,
     latitude: 48.5818,
@@ -80,7 +80,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Macht EIN Gruppenfoto mit der GESAMTEN Gruppe vor der Statue. Kein militärischer Gruß! Stattdessen eine kreative Pose: Pyramide bilden, alle gleichzeitig springen, alle Richtung Münster zeigen — oder etwas Eigenes. Hauptsache: alle drauf und lustig.",
     knowledgeText:
-      "Die Schlacht von Altenkirchen am 4. Juni 1796 war einer der frühen Siege Klébers im Ersten Koalitionskrieg im Westerwald — verewigt auf einer der Bronzetafeln am Sockel. Jean-Baptiste Kléber (1753–1800), gebürtiger Straßburger, befehligte später die Armeen der Französischen Republik in Ägypten und wurde 1800 in Kairo ermordet. Seine sterblichen Überreste ruhen seit 1838 unter der Bodenplatte seiner eigenen Statue — er ist buchstäblich auf dem Hauptplatz seiner Heimatstadt begraben.",
+      "Jean-Baptiste Kléber (1753–1800) ist einer der bedeutendsten Generäle, die Straßburg je hervorgebracht hat. Als Sohn einfacher Handwerker stieg er während der Französischen Revolution in höchste militärische Ränge auf. Die Bronzetafeln am Sockel erinnern an seine wichtigsten Schlachten im Dienst der Republik — im Ersten Koalitionskrieg ebenso wie in Ägypten, wo er das Kommando übernahm und schließlich ermordet wurde. Seine sterblichen Überreste ruhen seit 1838 unter der Bodenplatte seiner eigenen Statue — buchstäblich begraben auf dem Hauptplatz seiner Heimatstadt.",
     rewardLetter: "L",
     rewardNumber: 2,
     latitude: 48.5840,
@@ -117,7 +117,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Fotografiert die bunteste Hausfassade, die von eurer Position aus sichtbar ist — achtet auf die Spiegelungen im Kanal.",
     knowledgeText:
-      "Das Viertel 'Petite France' verdankt seinen Namen paradoxerweise einem Hospital aus dem 16. Jahrhundert, in dem Soldaten mit Syphilis behandelt wurden — die Krankheit nannten die Franzosen damals 'mal français'. Die typischen Fachwerkhäuser entlang der Kanäle wurden früher von Gerbern und Müllern bewohnt, die die Strömung der Ill für ihre Mühlen und das Färben von Häuten nutzten. Die obersten, offenen Stockwerke waren Speicher, in denen die Häute trocknen konnten — daran erkennt man die alten Gerberhäuser noch heute.",
+      "Das Viertel 'Petite France' verdankt seinen Namen paradoxerweise einem Hospital aus dem 16. Jahrhundert, in dem Soldaten mit Syphilis behandelt wurden — die Krankheit nannten die Franzosen damals 'mal français'. Die Häuser entlang der Kanäle wurden früher von Gerbern und Müllern bewohnt, die die Strömung der Ill für ihre Mühlen und das Färben von Häuten nutzten. Die obersten, offenen Stockwerke waren Speicher, in denen die Häute trocknen konnten — daran erkennt man die alten Gerberhäuser noch heute.",
     rewardLetter: "S",
     rewardNumber: 3,
     latitude: 48.5793,
@@ -144,7 +144,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Macht ein Panoramafoto, das die Türme und die Flussarme der Ill von der Brücke aus zeigt.",
     knowledgeText:
-      "Die im 13. Jahrhundert erbauten Ponts Couverts bildeten die erste Verteidigungslinie Straßburgs. Ursprünglich waren sie mit einem Holzdach bedeckt — dieses verschwand nach der Französischen Revolution, weshalb ihr Name heute paradox klingt. Es gab ursprünglich vier Türme; je nach Blickwinkel sind drei oder alle vier davon noch erkennbar. Jeder Turm trägt den Namen einer alten Straßburger Zunft.",
+      "Die im 13. Jahrhundert erbauten Ponts Couverts bildeten die erste Verteidigungslinie Straßburgs. Ursprünglich waren sie mit einem Holzdach bedeckt — dieses verschwand nach der Französischen Revolution, weshalb ihr Name heute paradox klingt: 'bedeckte Brücken', obwohl längst kein Dach mehr vorhanden ist. Das mittelalterliche Festungsensemble war einst vollständiger als heute — im 19. Jahrhundert wurde ein Turm abgerissen. Jeder verbliebene Turm trägt den Namen einer alten Straßburger Zunft.",
     rewardLetter: "A",
     rewardNumber: 4,
     latitude: 48.5784,
@@ -174,7 +174,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Fotografiert von der Terrasse aus das Panorama über die Straßburger Dächer mit dem Münsterturm im Hintergrund.",
     knowledgeText:
-      "Der Barrage Vauban wurde zwischen 1686 und 1690 im Auftrag von Ludwig XIV. gebaut. Im Falle eines feindlichen Angriffs konnten die Schleusen angehoben werden, um die südlichen Vororte zu überfluten und den Truppenvormarsch zu bremsen. Das Gebäude beherbergt heute eine Galerie mit mittelalterlichen Skulpturen aus dem Straßburger Münster.",
+      "Das Bauwerk entstand zwischen 1686 und 1690 im Auftrag von Ludwig XIV. Im Falle eines feindlichen Angriffs konnten die Schleusen angehoben werden, um die südlichen Vororte zu überfluten und den Truppenvormarsch zu bremsen. Das Gebäude beherbergt heute eine Galerie mit mittelalterlichen Skulpturen aus dem Straßburger Münster.",
     rewardLetter: "C",
     rewardNumber: 5,
     latitude: 48.5781,
@@ -213,7 +213,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Fotografiert eine der geschnitzten Tafeln an der Holzfassade des Hauses Kammerzell aus der Nähe — jede Tafel zeigt ein anderes Thema: Sinne, Planeten oder Helden der Antike.",
     knowledgeText:
-      "Das Haus Kammerzell gilt als eines der schönsten mittelalterlichen Häuser im Elsass — Erdgeschoss aus rosa Sandstein (1467), Holzetagen mit Schnitzereien (1589). Es verdankt seinen Namen einem elsässischen Käsehändler des 18. Jahrhunderts. Die 36 Schnitzereien stellen die fünf Sinne, die sieben damals bekannten Planeten und Helden der Antike dar. Direkt gegenüber liegt das Hôtel Cathédrale — eines der traditionsreichsten Häuser der Straßburger Altstadt mit Zimmern, die direkt auf das Münsterportal blicken.",
+      "Das Haus Kammerzell gilt als eines der schönsten mittelalterlichen Häuser im Elsass. Sein Erdgeschoss aus Vogesensandstein stammt aus dem Jahr 1467, die reich verzierten Holzetagen kamen 1589 hinzu. Den Namen verdankt es einem elsässischen Käsehändler des 18. Jahrhunderts. Die 36 Schnitzereien an der Fassade sind ein ikonografisches Programm: Sie zeigen die fünf Sinne, die sieben damals bekannten Planeten und Helden der griechisch-römischen Antike.",
     rewardLetter: "I",
     rewardNumber: 6,
     latitude: 48.5818,
@@ -275,7 +275,7 @@ export const STATIONS: Station[] = [
     photoChallenge:
       "Macht ein Gruppenfoto mit dem Münster im Hintergrund — versucht, möglichst viel vom Bauwerk aufs Bild zu bekommen.",
     knowledgeText:
-      "Das Straßburger Münster (Notre-Dame de Strasbourg) wurde zwischen 1015 und 1439 aus rosafarbenem Vogesensandstein erbaut. Mit 142 Metern Höhe war es vom 17. bis 19. Jahrhundert das höchste Bauwerk der Welt. Ursprünglich waren zwei Türme geplant — gebaut wurde nur einer. Goethe schwärmte während seines Straßburger Studiums hier von der gotischen Baukunst und nannte sie eine 'erhabene weite Empfindung'. Die rosa Farbe stammt vom Eisenoxid im Sandstein der Vogesen — derselbe Stein, aus dem auch das Erdgeschoss des Hauses Kammerzell besteht.",
+      "Das Straßburger Münster (Notre-Dame de Strasbourg) entstand in einer Bauzeit von mehr als vier Jahrhunderten und gilt als eines der bedeutendsten Beispiele gotischer Architektur. Mit 142 Metern Höhe war es vom 17. bis 19. Jahrhundert das höchste Gebäude der Welt. Ursprünglich waren zwei Türme geplant — vollendet wurde nur der nördliche. Goethe schwärmte während seines Straßburger Studiums von dieser Kathedrale und nannte sie eine 'erhabene weite Empfindung'.",
     rewardLetter: "N",
     rewardNumber: 8,
     latitude: 48.5813,

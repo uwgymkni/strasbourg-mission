@@ -3,6 +3,7 @@ import {
   doc,
   getDoc,
   getDocs,
+  onSnapshot,
   orderBy,
   query,
   setDoc,
@@ -17,7 +18,13 @@ import {
 } from "firebase/storage";
 import { getDb, getStorage, COLLECTIONS } from "@/lib/firebase";
 import { ok, err, type ServiceResult } from "@/lib/result";
-import type { Station, StationStatus, TeamProgress, ChallengeType } from "@/types/game";
+import type {
+  Station,
+  StationStatus,
+  TeamProgress,
+  ChallengeType,
+  MissionSettings,
+} from "@/types/game";
 import { TEAM_CONFIGS } from "@/constants/routes";
 
 // ---------------------------------------------------------------------------
@@ -710,6 +717,90 @@ export async function uploadStationPhoto(
     });
 
     return ok(url);
+  } catch (error) {
+    return err(error);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Global mission settings — shared countdown + announcement
+//
+// One doc: settings/mission. Admin (Mission Control) is the only writer.
+// Student devices subscribe read-only via onSnapshot — a push subscription,
+// NOT a polling interval, so no per-second reads or writes occur. The visible
+// countdown is computed client-side from countdownEndsAt by a local 1 s tick.
+// ---------------------------------------------------------------------------
+
+/** Firestore doc id within the settings collection. */
+const MISSION_DOC_ID = "mission";
+
+/** Safe defaults used when the settings doc does not exist yet. */
+export const DEFAULT_MISSION_SETTINGS: MissionSettings = {
+  countdownEndsAt: null,
+  countdownPaused: false,
+  pausedRemainingMs: null,
+  announcement: "",
+  updatedAt: 0,
+};
+
+function normalizeMissionSettings(
+  data: Record<string, unknown> | undefined,
+): MissionSettings {
+  if (!data) return { ...DEFAULT_MISSION_SETTINGS };
+  return {
+    countdownEndsAt:
+      typeof data.countdownEndsAt === "number" ? data.countdownEndsAt : null,
+    countdownPaused: data.countdownPaused === true,
+    pausedRemainingMs:
+      typeof data.pausedRemainingMs === "number" ? data.pausedRemainingMs : null,
+    announcement: typeof data.announcement === "string" ? data.announcement : "",
+    updatedAt: typeof data.updatedAt === "number" ? data.updatedAt : 0,
+  };
+}
+
+/**
+ * Subscribes to the global mission settings doc. Invokes `onChange` with the
+ * current value immediately and on every subsequent change. Returns an
+ * unsubscribe function — call it on component unmount.
+ *
+ * Uses onSnapshot (event-driven push), not a polling interval. Snapshot errors
+ * are logged and swallowed so a transient Firestore hiccup never throws into
+ * the React tree.
+ */
+export function subscribeMissionSettings(
+  onChange: (settings: MissionSettings) => void,
+): () => void {
+  const ref = doc(getDb(), COLLECTIONS.SETTINGS, MISSION_DOC_ID);
+  return onSnapshot(
+    ref,
+    (snap) => {
+      onChange(
+        normalizeMissionSettings(
+          snap.exists() ? (snap.data() as Record<string, unknown>) : undefined,
+        ),
+      );
+    },
+    (error) => {
+      console.warn("[mission-settings] snapshot error:", error);
+    },
+  );
+}
+
+/**
+ * Admin-only writer. Merges a partial settings patch into settings/mission and
+ * stamps updatedAt. merge:true so the doc is created on first write and sibling
+ * fields are never clobbered.
+ */
+export async function updateMissionSettings(
+  patch: Partial<Omit<MissionSettings, "updatedAt">>,
+): Promise<ServiceResult<void>> {
+  try {
+    await setDoc(
+      doc(getDb(), COLLECTIONS.SETTINGS, MISSION_DOC_ID),
+      { ...patch, updatedAt: Date.now() },
+      { merge: true },
+    );
+    return ok(undefined);
   } catch (error) {
     return err(error);
   }
