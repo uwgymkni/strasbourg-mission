@@ -1,5 +1,6 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { MissionBanner } from "@/components/MissionBanner";
+import { QuizBanner } from "@/components/quiz/QuizBanner";
 
 export default function GameLayout({
   children,
@@ -7,6 +8,7 @@ export default function GameLayout({
   return (
     <AppShell>
       <MissionBanner />
+      <QuizBanner />
       {children}
     </AppShell>
   );

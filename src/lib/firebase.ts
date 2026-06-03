@@ -72,4 +72,10 @@ export const COLLECTIONS = {
   /** Global mission settings — a single doc settings/mission holding the
    *  shared countdown + announcement broadcast to every device. */
   SETTINGS: "settings",
+  /** Real-time quiz — live state doc quiz/state. Single writer: Mission Control. */
+  QUIZ: "quiz",
+  /** Quiz answers — quizResponses/{nonce}__{index}/teams/{teamId}, create-only. */
+  QUIZ_RESPONSES: "quizResponses",
+  /** Cumulative per-team quiz scores — quizScores/{teamId}, written by admin. */
+  QUIZ_SCORES: "quizScores",
 } as const;

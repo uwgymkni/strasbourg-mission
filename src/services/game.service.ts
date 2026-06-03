@@ -368,6 +368,29 @@ export async function saveTeamMembers(
   }
 }
 
+/**
+ * Stamps startedAt = now on a team's progress doc. Called once, when a team
+ * whose doc was created by the seed script (startedAt left null → normalises
+ * to 0) first loads the game. Without this, Mission Control would show every
+ * seeded team as "Nicht gestartet" for the whole trip, and the stuck-heuristic
+ * (which needs startedAt) would never fire.
+ *
+ * Callers only invoke it while startedAt is still unset, so the single write
+ * lands once; fire-and-forget, never blocks gameplay.
+ */
+export async function persistStartedAt(
+  teamId: string
+): Promise<ServiceResult<void>> {
+  try {
+    await updateDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamId), {
+      startedAt: Date.now(),
+    });
+    return ok(undefined);
+  } catch (error) {
+    return err(error);
+  }
+}
+
 /** Records the team's final answer and timestamps their finish. */
 export async function submitFinalSolution(
   teamId: string,

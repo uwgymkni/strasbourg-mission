@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/Button";
 export default function FinalPage() {
   const router = useRouter();
   const user = useRequireAuth();
-  const MIN_LETTERS_FOR_FINAL = 5; // max 1 skip allowed
 
   const {
     stations,
@@ -33,11 +32,11 @@ export default function FinalPage() {
   const sortedLetters = [...stations].sort((a, b) => a.rewardNumber - b.rewardNumber);
   const correctAnswer = sortedLetters.map((s) => s.rewardLetter).join("").toLowerCase();
 
-  // How many stations were actually solved (not skipped)
-  const collectedLetterCount = sortedLetters.filter(
-    (s) => progress[s.id] === "completed"
-  ).length;
-  const canSubmitFinal = collectedLetterCount >= MIN_LETTERS_FOR_FINAL;
+  // The final page is only reachable once every station is resolved
+  // (completed or skipped), so submission is always permitted here. The skip
+  // penalty is carried purely by the missing letters the team must deduce —
+  // no separate count gate, which previously dead-ended heavy skippers.
+  const canSubmitFinal = allResolved;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -153,16 +152,6 @@ export default function FinalPage() {
             >
               {loading ? "Wiederholen …" : "Erneut versuchen →"}
             </button>
-          </div>
-        )}
-
-        {/* Minimum letters guard */}
-        {!canSubmitFinal && sortedLetters.length > 0 && (
-          <div className="rounded-lg bg-amber-950/40 border border-amber-700/40 px-4 py-3">
-            <p className="text-sm text-amber-400 leading-relaxed">
-              Ihr habt zu wenige Buchstaben gesammelt ({collectedLetterCount} von {MIN_LETTERS_FOR_FINAL} benötigt).
-              Das Lösungswort kann nicht eingegeben werden.
-            </p>
           </div>
         )}
 

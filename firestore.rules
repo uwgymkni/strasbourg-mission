@@ -54,5 +54,57 @@ service cloud.firestore {
         && request.resource.data.teamId is string;
     }
 
+    // ── settings/{docId} ─────────────────────────────────────────────────────
+    // Global mission settings (settings/mission): shared countdown + announcement.
+    // Mission Control (admin) writes; every device reads. Same open trust model
+    // as progress above (no Firebase Auth yet) — see the progress warning.
+    match /settings/{docId} {
+      allow read:  if true;
+      allow write: if true;
+    }
+
+    // ── quiz/{docId} ─────────────────────────────────────────────────────────
+    // Live quiz state (quiz/state). Single writer in practice: Mission Control.
+    match /quiz/{docId} {
+      allow read:  if true;
+      allow write: if true;
+    }
+
+    // ── quizScores/{teamId} ──────────────────────────────────────────────────
+    // Cumulative scores. Written by the admin controller; read by all devices.
+    match /quizScores/{teamId} {
+      allow read:  if true;
+      allow write: if true;
+    }
+
+    // ── quizResponses/{runQuestion}/teams/{teamId} ───────────────────────────
+    // One answer per team per question. CREATE-ONLY → an answer can never be
+    // changed or deleted, which enforces "answer only once" server-side.
+    //
+    // Anti-cheat within the no-auth model:
+    //   - submittedAt must equal the server time (request.time) → clients cannot
+    //     forge a faster response time.
+    //   - sessionId must match the team's active session marker on its progress
+    //     doc (tolerant when none is set yet) → ties an answer to the logged-in
+    //     device.
+    function activeSessionId(teamId) {
+      return get(/databases/$(database)/documents/progress/$(teamId)).data.get("sessionId", "");
+    }
+    match /quizResponses/{runQuestion}/teams/{teamId} {
+      allow read: if true;
+      allow create: if
+        request.resource.data.keys().hasAll(["teamId", "optionIndex", "submittedAt", "sessionId"])
+        && request.resource.data.teamId == teamId
+        && request.resource.data.optionIndex is int
+        && request.resource.data.optionIndex >= 0
+        && request.resource.data.optionIndex <= 3
+        && request.resource.data.submittedAt == request.time
+        && (
+          activeSessionId(teamId) == ""
+          || activeSessionId(teamId) == request.resource.data.sessionId
+        );
+      allow update, delete: if false;
+    }
+
   }
 }

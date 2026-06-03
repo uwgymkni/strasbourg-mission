@@ -20,6 +20,7 @@ import {
   resetTeamProgress,
   persistWrongAnswer,
   heartbeatSession,
+  persistStartedAt,
 } from "@/services/game.service";
 import { useAuthStore } from "@/stores/auth.store";
 import { ok, type ServiceResult } from "@/lib/result";
@@ -113,6 +114,12 @@ export function useGame() {
         progress: progressResult.data.progress,
         currentStationId: progressResult.data.currentStationId,
       });
+      // Seeded docs carry startedAt = 0 (seed writes null). Stamp it on the
+      // first real load so Mission Control sees the team as active. One-time:
+      // later loads read startedAt > 0 and skip. Fire-and-forget.
+      if (!progressResult.data.startedAt) {
+        void persistStartedAt(teamId);
+      }
     } else if (stationsResult.data.length > 0) {
       // New team — initialize their progress with the first station active.
       const firstStation = stationsResult.data[0]!;

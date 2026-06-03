@@ -11,6 +11,7 @@ import {
 import { fetchAllTeams } from "@/services/auth.service";
 import { MissionMap } from "@/components/MissionMap";
 import { MissionCountdownAdmin } from "@/components/MissionCountdownAdmin";
+import { QuizAdminPanel } from "@/components/quiz/QuizAdminPanel";
 import type { Station, StationStatus, TeamProgress } from "@/types/game";
 import type { AppUser } from "@/types/user";
 
@@ -1170,6 +1171,9 @@ export default function MissionControlPage() {
 
         {/* ── Countdown + announcement (admin) ───────────────────── */}
         <MissionCountdownAdmin />
+
+        {/* ── Quiz control (admin) ───────────────────────────────── */}
+        <QuizAdminPanel />
 
         {/* ── Stats bar ──────────────────────────────────────────── */}
         {summaries.length > 0 && (
