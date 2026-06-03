@@ -5,6 +5,11 @@ import { useRouter } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { fetchAllTeams } from "@/services/auth.service";
+import {
+  getSessionStatus,
+  markActiveSession,
+} from "@/services/game.service";
+import { useAuthStore } from "@/stores/auth.store";
 import type { AppUser } from "@/types/user";
 
 export default function LoginPage() {
@@ -13,8 +18,17 @@ export default function LoginPage() {
   const [teamsLoading, setTeamsLoading] = useState(true);
   const [teamsError, setTeamsError] = useState<string | null>(null);
 
+  // Multi-device warning state. When set, the form is replaced by a soft
+  // warning + "Trotzdem fortfahren" / "Abbrechen" buttons. Holding the team
+  // info here so the success copy on the warning still reads correctly.
+  const [pendingTeam, setPendingTeam] = useState<{
+    code: string;
+    name: string;
+  } | null>(null);
+  const [navigating, setNavigating] = useState(false);
+
   const router = useRouter();
-  const { login, loading, error, clearError } = useAuth();
+  const { login, logout, loading, error, clearError } = useAuth();
 
   // Load team list from Firestore on mount
   useEffect(() => {
@@ -38,13 +52,53 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!selectedCode) return;
+
     const result = await login(selectedCode);
-    if (result.success) {
+    if (!result.success) return;
+
+    // login() has just (re)generated the local sessionId if needed.
+    const localSessionId = useAuthStore.getState().sessionId;
+    if (!localSessionId) {
+      // Should not happen — login always ensures a sessionId. Fall through
+      // to navigation rather than blocking the user on a corner case.
       router.push("/team-members");
+      return;
     }
+
+    // Multi-device check: is somebody else still active on this team?
+    const status = await getSessionStatus(selectedCode);
+    if (
+      status.success &&
+      status.data.isActive &&
+      status.data.sessionId !== localSessionId
+    ) {
+      setPendingTeam({ code: selectedCode, name: result.data.teamName });
+      return;
+    }
+
+    // No conflict — claim the session and proceed.
+    setNavigating(true);
+    await markActiveSession(selectedCode, localSessionId);
+    router.push("/team-members");
   }
 
-  const isSubmitDisabled = !selectedCode || loading || teamsLoading;
+  async function handleConfirmContinue() {
+    if (!pendingTeam) return;
+    const localSessionId = useAuthStore.getState().sessionId;
+    if (!localSessionId) return;
+    setNavigating(true);
+    await markActiveSession(pendingTeam.code, localSessionId);
+    router.push("/team-members");
+  }
+
+  async function handleCancel() {
+    setPendingTeam(null);
+    // Logout clears the local session so the next attempt starts clean.
+    await logout();
+  }
+
+  const isSubmitDisabled =
+    !selectedCode || loading || teamsLoading || navigating;
 
   return (
     <>
@@ -60,6 +114,44 @@ export default function LoginPage() {
         </p>
       </div>
 
+      {pendingTeam ? (
+        <div className="space-y-4">
+          <div
+            role="alert"
+            className="rounded-xl bg-amber-500/10 border border-amber-500/40 px-4 py-4"
+          >
+            <p className="text-sm font-medium text-amber-300 mb-1">
+              {pendingTeam.name}
+            </p>
+            <p className="text-sm text-amber-200/90 leading-relaxed">
+              Dieses Team scheint bereits auf einem anderen Gerät aktiv zu sein.
+              Möchtet ihr trotzdem fortfahren?
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3">
+            <Button
+              type="button"
+              variant="primary"
+              loading={navigating}
+              disabled={navigating}
+              onClick={() => void handleConfirmContinue()}
+              className="w-full"
+            >
+              Trotzdem fortfahren
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={navigating}
+              onClick={() => void handleCancel()}
+              className="w-full"
+            >
+              Abbrechen
+            </Button>
+          </div>
+        </div>
+      ) : (
       <form onSubmit={handleSubmit} className="space-y-4" noValidate>
 
         {/* Team dropdown */}
@@ -124,13 +216,14 @@ export default function LoginPage() {
         <Button
           type="submit"
           variant="primary"
-          loading={loading}
+          loading={loading || navigating}
           disabled={isSubmitDisabled}
           className="w-full"
         >
           Mission starten
         </Button>
       </form>
+      )}
     </>
   );
 }

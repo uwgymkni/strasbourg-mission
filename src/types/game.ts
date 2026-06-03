@@ -33,4 +33,6 @@ export interface TeamProgress {
   photos?: Record<string, string>;       // stationId → Firebase Storage download URL
   answers?: Record<string, string>;          // stationId → the correct answer the student typed
   lastWrongAnswer?: Record<string, string>;  // stationId → most recent wrong submission
+  sessionId?: string;                        // active session marker — soft multi-device detection
+  lastSeenAt?: number;                       // UNIX ms of last loadGame() heartbeat by the holding session
 }

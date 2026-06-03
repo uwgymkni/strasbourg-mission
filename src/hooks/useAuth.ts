@@ -16,6 +16,16 @@ import {
 import type { ServiceResult } from "@/lib/result";
 import type { AppUser } from "@/types/user";
 
+/** Cryptographically random session marker. crypto.randomUUID is available
+ *  on iOS Safari 14+, Chrome 92+, Firefox 95+ — well within our user base.
+ *  Tiny inline fallback for the rare older browser. */
+function generateSessionId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `s-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function useAuth() {
   const [loading, setLoading] = useState(false);
   // Ref-based guard: prevents concurrent logins without triggering a rerender on check
@@ -29,6 +39,7 @@ export function useAuth() {
   const setUser = useAuthStore((s) => s.setUser);
   const setStatus = useAuthStore((s) => s.setStatus);
   const setAuthError = useAuthStore((s) => s.setError);
+  const setSessionId = useAuthStore((s) => s.setSessionId);
   const resetAuth = useAuthStore((s) => s.reset);
   const resetGame = useGameStore((s) => s.resetGame);
 
@@ -46,6 +57,13 @@ export function useAuth() {
 
     if (result.success) {
       setUser(result.data);
+      // Generate a sessionId the first time this browser signs in. Keeping it
+      // stable across reloads lets the multi-device check tell "same device"
+      // apart from "second device". A fresh ID per login would cause every
+      // reload to look like a new device to itself.
+      if (!useAuthStore.getState().sessionId) {
+        setSessionId(generateSessionId());
+      }
       setStatus("authenticated");
     } else {
       setAuthError(result.error);

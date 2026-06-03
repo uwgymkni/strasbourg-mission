@@ -133,6 +133,11 @@ function normalizeTeamProgress(
               .map(([k, v]) => [k, v as string])
           )
         : {},
+    // Multi-device session markers — omit entirely when absent so legacy docs
+    // continue to normalise to undefined rather than carrying junk values.
+    ...(typeof data.sessionId === "string" &&
+      data.sessionId.length > 0 && { sessionId: data.sessionId }),
+    ...(typeof data.lastSeenAt === "number" && { lastSeenAt: data.lastSeenAt }),
   };
 }
 
@@ -546,6 +551,136 @@ export async function persistWrongAnswer(
   } catch (error) {
     return err(error);
   }
+}
+
+// ---------------------------------------------------------------------------
+// Multi-device session helpers
+//
+// Two collaborating fields on each progress doc:
+//   sessionId  — random marker chosen by the active browser
+//   lastSeenAt — UNIX ms of the last loadGame() by that session
+//
+// A second device that opens /login while another session is still active
+// will see a non-stale lastSeenAt + a different sessionId and can warn the
+// teacher. There is intentionally no hard lock: the warning is dismissible,
+// so teachers never accidentally lock a team out.
+//
+// Heartbeat cadence comes for free from loadGame() being invoked on every
+// game-route mount — no setInterval, no extra service writes needed.
+// ---------------------------------------------------------------------------
+
+/** Treat sessions older than this as inactive — long enough to not flap on
+ *  a slow walker between stations, short enough that a finished group's
+ *  marker doesn't shadow a real new login on the next school day. */
+const SESSION_ACTIVE_THRESHOLD_MS = 10 * 60 * 1000;
+
+/** Minimum gap between two heartbeat writes for the same team. */
+const HEARTBEAT_DEBOUNCE_MS = 2 * 60 * 1000;
+
+/**
+ * In-memory record of the last heartbeat write per team, used to debounce
+ * markActiveSession() on the heartbeat path.
+ *
+ * Lifetime: module scope. It survives client-side navigation (router.push
+ * between /dashboard, /mission, /final, /success keeps the same JS module
+ * loaded), which is exactly where the redundant writes came from. It does
+ * NOT survive a hard reload (F5) or a new tab — a fresh module starts with
+ * an empty map, so the first loadGame() after a reload writes once. That is
+ * desirable: a hard reload is a meaningful "still here" signal and is rare.
+ */
+const lastHeartbeatAt = new Map<string, number>();
+
+export interface SessionStatus {
+  /** Last known sessionId on the team — null if doc/field missing. */
+  sessionId: string | null;
+  /** Last heartbeat timestamp — null if doc/field missing. */
+  lastSeenAt: number | null;
+  /** True iff lastSeenAt is within the active threshold AND sessionId is set. */
+  isActive: boolean;
+}
+
+/**
+ * Reads the session marker from a team's progress doc. Returns inactive
+ * defaults when the doc doesn't exist (fresh team that has never started).
+ * Cheap one-shot read — no listeners, no real-time subscription.
+ */
+export async function getSessionStatus(
+  teamCode: string,
+): Promise<ServiceResult<SessionStatus>> {
+  try {
+    const snap = await getDoc(doc(getDb(), COLLECTIONS.PROGRESS, teamCode));
+    if (!snap.exists()) {
+      return ok({ sessionId: null, lastSeenAt: null, isActive: false });
+    }
+    const data = snap.data() as Record<string, unknown>;
+    const sessionId =
+      typeof data.sessionId === "string" && data.sessionId.length > 0
+        ? data.sessionId
+        : null;
+    const lastSeenAt =
+      typeof data.lastSeenAt === "number" ? data.lastSeenAt : null;
+    const isActive =
+      sessionId !== null &&
+      lastSeenAt !== null &&
+      lastSeenAt > Date.now() - SESSION_ACTIVE_THRESHOLD_MS;
+    return ok({ sessionId, lastSeenAt, isActive });
+  } catch (error) {
+    return err(error);
+  }
+}
+
+/**
+ * Writes the current session marker + heartbeat onto the team's progress doc.
+ * Uses setDoc with merge so it also works as the very first write on a fresh
+ * team (before loadGame has created the initial progress map) without
+ * clobbering sibling fields that other code paths may have written.
+ *
+ * Fire-and-forget on call sites is fine — best-effort heartbeat, never blocks
+ * navigation or game actions.
+ */
+export async function markActiveSession(
+  teamCode: string,
+  sessionId: string,
+): Promise<ServiceResult<void>> {
+  try {
+    await setDoc(
+      doc(getDb(), COLLECTIONS.PROGRESS, teamCode),
+      {
+        sessionId,
+        lastSeenAt: Date.now(),
+      },
+      { merge: true },
+    );
+    // Record the write so a heartbeat firing moments later (e.g. the dashboard
+    // mount right after login) is debounced rather than writing again.
+    lastHeartbeatAt.set(teamCode, Date.now());
+    return ok(undefined);
+  } catch (error) {
+    return err(error);
+  }
+}
+
+/**
+ * Debounced heartbeat — used on the high-frequency path (loadGame on every
+ * game-page mount). Writes at most once per HEARTBEAT_DEBOUNCE_MS per team;
+ * within that window it is a no-op that resolves immediately without touching
+ * Firestore.
+ *
+ * Distinct from markActiveSession(), which stays authoritative and always
+ * writes — login / "Trotzdem fortfahren" must claim the session instantly.
+ *
+ * Never blocks gameplay: callers fire-and-forget, and a skipped write returns
+ * ok() so the call site can treat it identically to a real write.
+ */
+export async function heartbeatSession(
+  teamCode: string,
+  sessionId: string,
+): Promise<ServiceResult<void>> {
+  const last = lastHeartbeatAt.get(teamCode);
+  if (last !== undefined && Date.now() - last < HEARTBEAT_DEBOUNCE_MS) {
+    return ok(undefined); // within debounce window — skip the write
+  }
+  return markActiveSession(teamCode, sessionId);
 }
 
 /**

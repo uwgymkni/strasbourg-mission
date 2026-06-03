@@ -19,7 +19,9 @@ import {
   submitFinalSolution,
   resetTeamProgress,
   persistWrongAnswer,
+  heartbeatSession,
 } from "@/services/game.service";
+import { useAuthStore } from "@/stores/auth.store";
 import { ok, type ServiceResult } from "@/lib/result";
 import type { Station, TeamProgress } from "@/types/game";
 
@@ -77,6 +79,13 @@ export function useGame() {
     teamIdRef.current = teamId;
     setLoading(true);
     setError(null);
+
+    // Heartbeat — refreshes the multi-device session marker so other
+    // devices opening the same team see this session as still active.
+    // Debounced (max one write / 2 min per team) and fire-and-forget:
+    // a heartbeat failure must never block gameplay.
+    const sid = useAuthStore.getState().sessionId;
+    if (sid) void heartbeatSession(teamId, sid);
 
     // Stations are always fetched fresh — they are config, not user state.
     const stationsResult = await fetchStations();

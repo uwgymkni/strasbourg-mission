@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 
 const MIN_MEMBERS = 2;
-const MAX_MEMBERS = 6;
+const MAX_MEMBERS = 13;
 
 function MemberInput({
   index,

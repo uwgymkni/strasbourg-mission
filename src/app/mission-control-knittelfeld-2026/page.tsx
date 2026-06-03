@@ -1257,6 +1257,7 @@ export default function MissionControlPage() {
                 return (
                   <Fragment key={s.teamId}>
                   <tr
+                    data-team-code={s.teamId}
                     onClick={() =>
                       setExpandedTeamId((prev) => (prev === s.teamId ? null : s.teamId))
                     }
@@ -1276,7 +1277,10 @@ export default function MissionControlPage() {
                       <p className="font-medium text-cream">{s.teamId}</p>
                       <p className="text-xs text-stone-500">{s.teamName}</p>
                       {s.members.length > 0 && (
-                        <p className="text-xs text-stone-600 mt-0.5 max-w-[200px] truncate">
+                        <p
+                          className="text-xs text-stone-600 mt-0.5 max-w-[200px] truncate"
+                          title={s.members.join(", ")}
+                        >
                           {s.members.join(", ")}
                         </p>
                       )}
