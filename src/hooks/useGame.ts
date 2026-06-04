@@ -81,13 +81,6 @@ export function useGame() {
     setLoading(true);
     setError(null);
 
-    // Heartbeat — refreshes the multi-device session marker so other
-    // devices opening the same team see this session as still active.
-    // Debounced (max one write / 2 min per team) and fire-and-forget:
-    // a heartbeat failure must never block gameplay.
-    const sid = useAuthStore.getState().sessionId;
-    if (sid) void heartbeatSession(teamId, sid);
-
     // Stations are always fetched fresh — they are config, not user state.
     const stationsResult = await fetchStations();
     if (!stationsResult.success) {
@@ -141,6 +134,16 @@ export function useGame() {
         setError(initResult.error);
       }
     }
+
+    // Heartbeat LAST — refreshes the multi-device session marker. It is a
+    // setDoc(merge) fire-and-forget write. Firing it AFTER the progress read
+    // is essential: if it ran before, its pending local mutation (which only
+    // carries {sessionId, lastSeenAt}) would shadow the not-yet-cached
+    // progress map and fetchTeamProgress would return an empty progress → an
+    // all-locked, unstartable dashboard. Reading first populates the cache
+    // with the full doc, so the heartbeat then merges cleanly.
+    const sid = useAuthStore.getState().sessionId;
+    if (sid) void heartbeatSession(teamId, sid);
 
     setLoading(false);
   }
