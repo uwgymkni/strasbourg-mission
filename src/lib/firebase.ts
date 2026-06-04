@@ -1,5 +1,9 @@
 import { initializeApp, getApps, type FirebaseApp } from "firebase/app";
-import { getFirestore, type Firestore } from "firebase/firestore";
+import {
+  initializeFirestore,
+  getFirestore,
+  type Firestore,
+} from "firebase/firestore";
 import { getStorage as fbGetStorage, type FirebaseStorage } from "firebase/storage";
 
 function assertEnv(): void {
@@ -46,9 +50,27 @@ let _storage: FirebaseStorage | null = null;
 /**
  * Returns the Firestore instance. Initializes Firebase on first call.
  * Throws a descriptive error if required environment variables are missing.
+ *
+ * Uses initializeFirestore with experimentalForceLongPolling instead of plain
+ * getFirestore. WHY: the default WebChannel streaming transport (and even the
+ * default auto-detect-long-polling probe, which is on since SDK v9.22) fails to
+ * deliver real-time onSnapshot pushes on Safari — the initial fetch on page
+ * load works, but subsequent server-side changes never arrive, so the live
+ * quiz never updates without a manual reload. Forcing long-polling bypasses the
+ * broken streaming path and delivers snapshots reliably on Safari, Chrome and
+ * behind proxies alike. Payloads here are tiny (a single state doc + scores),
+ * so the minor long-polling overhead is irrelevant.
  */
 export function getDb(): Firestore {
-  if (!_db) _db = getFirestore(createApp());
+  if (_db) return _db;
+  const app = createApp();
+  try {
+    _db = initializeFirestore(app, { experimentalForceLongPolling: true });
+  } catch {
+    // Firestore was already started for this app (e.g. dev hot-reload
+    // re-evaluated this module). Reuse the existing instance.
+    _db = getFirestore(app);
+  }
   return _db;
 }
 
